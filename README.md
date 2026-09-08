@@ -66,9 +66,14 @@
 
 ## 📱 Screenshots
 
-|:---:|:---:|:---:|
-| <img src="docs/screenshots/1.jpg" width="260"> | <img src="docs/screenshots/2.jpg" width="260"> | <img src="docs/screenshots/3.jpg" width="260"> |
-| <img src="docs/screenshots/4.jpg" width="260"> | <img src="docs/screenshots/5.jpg" width="260"> | <img src="docs/screenshots/6.jpg" width="260"> |
+<div align="center">
+<img src="./docs/screenshots/1.jpg" width="240" />
+<img src="./docs/screenshots/2.jpg" width="240" />
+<img src="./docs/screenshots/3.jpg" width="240" />
+<img src="./docs/screenshots/4.jpg" width="240" />
+<img src="./docs/screenshots/5.jpg" width="240" />
+<img src="./docs/screenshots/6.jpg" width="240" />
+</div>
 
 ---
 
