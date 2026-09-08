@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <shortcut
+        android:shortcutId="settings"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_settings"
+        android:shortcutShortLabel="@string/short_settings">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.blueplayer.app"
+            android:targetClass="com.blueplayer.app.MainActivity">
+            <extra android:name="section" android:value="settings" />
+        </intent>
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="music"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_music"
+        android:shortcutShortLabel="@string/short_music">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.blueplayer.app"
+            android:targetClass="com.blueplayer.app.MainActivity">
+            <extra android:name="section" android:value="library" />
+        </intent>
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="playlists"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_playlists"
+        android:shortcutShortLabel="@string/short_playlists">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.blueplayer.app"
+            android:targetClass="com.blueplayer.app.MainActivity">
+            <extra android:name="section" android:value="playlists" />
+        </intent>
+    </shortcut>
+
+</shortcuts>

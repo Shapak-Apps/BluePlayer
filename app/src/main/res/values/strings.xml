@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Blue Player</string>
+    <string name="short_settings">Настройки</string>
+    <string name="short_music">Моя музыка</string>
+    <string name="short_playlists">Плейлисты</string>
+</resources>
