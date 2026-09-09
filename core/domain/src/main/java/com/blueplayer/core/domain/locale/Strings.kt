@@ -465,4 +465,34 @@ object Strings {
         AppLanguage.ENGLISH -> "Version, developer, GitHub"
         AppLanguage.TURKMEN -> "Wersiýa, düzediji, GitHub"
     }
+    fun deleteFromDevice(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Удалить с устройства"
+        AppLanguage.ENGLISH -> "Delete from device"
+        AppLanguage.TURKMEN -> "Enjamdan poz"
+    }
+    fun deleteTrackTitle(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Удалить трек?"
+        AppLanguage.ENGLISH -> "Delete track?"
+        AppLanguage.TURKMEN -> "Aýdymy pozmakmy?"
+    }
+    fun deleteTrackText(lang: AppLanguage, name: String) = when (lang) {
+        AppLanguage.RUSSIAN -> "«$name» будет навсегда удалён с устройства и из приложения. Это действие нельзя отменить."
+        AppLanguage.ENGLISH -> "«$name» will be permanently deleted from your device and from the app. This action cannot be undone."
+        AppLanguage.TURKMEN -> "«$name» enjamdan we programmadan hemişelik pozular. Bu hereketi yzyna almak mümkin däl."
+    }
+    fun trackDeleted(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Трек удалён"
+        AppLanguage.ENGLISH -> "Track deleted"
+        AppLanguage.TURKMEN -> "Aýdym pozuldy"
+    }
+    fun deleteFailed(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Не удалось удалить файл"
+        AppLanguage.ENGLISH -> "Failed to delete file"
+        AppLanguage.TURKMEN -> "Faýly pozmak başartmady"
+    }
+    fun deleteNotAllowed(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Android не разрешает удалить этот файл"
+        AppLanguage.ENGLISH -> "Android does not allow deleting this file"
+        AppLanguage.TURKMEN -> "Android bu faýly pozmaga rugsat bermeýär"
+    }
 }
