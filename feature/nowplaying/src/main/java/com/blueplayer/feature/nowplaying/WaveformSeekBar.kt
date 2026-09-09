@@ -1,8 +1,9 @@
 package com.blueplayer.feature.nowplaying
 
+import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.forEachGesture
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,6 +14,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -22,6 +24,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import kotlin.random.Random
 
@@ -42,14 +45,16 @@ fun WaveformSeekBar(
     onSeek: (Float) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val view = LocalView.current
     val bars = remember(waveform, seed) {
         if (waveform.isNotEmpty()) waveform else generatePseudoWave(seed, 120)
     }
     val barCount = bars.size
 
     var drag by remember { mutableStateOf<Float?>(null) }
-    var tap by remember { mutableStateOf<Float?>(null) }
-    val display = drag ?: tap ?: progress
+    var lastSeekTime by remember { mutableLongStateOf(0L) }
+
+    val display = drag ?: progress
 
     Column(modifier = modifier) {
         Canvas(
@@ -57,27 +62,41 @@ fun WaveformSeekBar(
                 .fillMaxWidth()
                 .height(72.dp)
                 .padding(horizontal = 8.dp)
-                .pointerInput(seed) {
-                    detectTapGestures { offset ->
-                        val f = (offset.x / size.width).coerceIn(0f, 1f)
-                        tap = f
-                        onSeek(f)
-                        tap = null
-                    }
-                    detectDragGestures(
-                        onDragStart = { offset ->
-                            drag = (offset.x / size.width).coerceIn(0f, 1f)
-                        },
-                        onDragEnd = {
-                            drag?.let { onSeek(it) }
+                .pointerInput(durationMs, seed) {
+                    forEachGesture {
+                        awaitPointerEventScope {
+                            val down = awaitFirstDown(requireUnconsumed = false)
+                            down.consume()
+
+                            val f = (down.position.x / size.width).coerceIn(0f, 1f)
+                            drag = f
+                            onSeek(f)
+                            lastSeekTime = System.currentTimeMillis()
+                            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+
+                            var pressed = true
+                            var currentF = f
+                            while (pressed) {
+                                val event = awaitPointerEvent()
+                                pressed = event.changes.any { it.pressed }
+                                if (pressed) {
+                                    val change = event.changes.first()
+                                    change.consume()
+                                    currentF = (change.position.x / size.width).coerceIn(0f, 1f)
+                                    drag = currentF
+
+                                    val now = System.currentTimeMillis()
+                                    if (now - lastSeekTime > 50L) {
+                                        onSeek(currentF)
+                                        lastSeekTime = now
+                                    }
+                                }
+                            }
+
                             drag = null
-                        },
-                        onDragCancel = { drag = null },
-                        onDrag = { change, _ ->
-                            change.consume()
-                            drag = (change.position.x / size.width).coerceIn(0f, 1f)
+                            onSeek(currentF)
                         }
-                    )
+                    }
                 }
         ) {
             val barWidth = size.width / barCount
