@@ -1,13 +1,22 @@
 package com.blueplayer.feature.nowplaying
 
+import android.app.Activity
+import android.app.RecoverableSecurityException
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
+import android.provider.Settings
 import android.view.HapticFeedbackConstants
-import androidx.compose.foundation.Canvas
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.forEachGesture
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,13 +29,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Menu
@@ -50,17 +59,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -69,18 +73,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.blueplayer.core.domain.locale.AppLanguage
 import com.blueplayer.core.domain.locale.Strings
+import com.blueplayer.core.domain.model.Track
 import com.blueplayer.core.domain.player.PlaybackOptions
 import com.blueplayer.core.domain.player.PlayerController
 import com.blueplayer.core.domain.player.PlayerState
@@ -92,7 +96,10 @@ import com.blueplayer.core.player.OnlineCoverFetcher
 import com.blueplayer.core.player.WaveformExtractor
 import com.blueplayer.ui.components.ArtworkPlaceholder
 import com.blueplayer.ui.components.GlideArtwork
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
 
 private val SPEEDS = listOf(0.75f, 1f, 1.25f, 1.5f, 2f)
 
@@ -109,11 +116,14 @@ fun NowPlayingScreen(
     onOpenDrawer: () -> Unit,
     onEqualizerClick: () -> Unit,
     onAlbumClick: (String) -> Unit,
+    onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val track = state.currentTrack
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val view = LocalView.current
+    val contentResolver = context.contentResolver
 
     val favorites by favoritesRepository.favorites.collectAsStateWithLifecycle()
     val playlists by playlistsRepository.playlists.collectAsStateWithLifecycle()
@@ -149,7 +159,316 @@ fun NowPlayingScreen(
     var showPlaylistSheet by remember { mutableStateOf(false) }
     var showBookmarksSheet by remember { mutableStateOf(false) }
     var showInfoDialog by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
     var menuExpanded by remember { mutableStateOf(false) }
+
+    var pendingDeleteUri by remember { mutableStateOf<Uri?>(null) }
+    var pendingDeleteTrack by remember { mutableStateOf<Track?>(null) }
+
+    suspend fun performDelete(uri: Uri): Boolean = withContext(Dispatchers.IO) {
+        val crDeleted = runCatching { contentResolver.delete(uri, null, null) > 0 }
+            .getOrDefault(false)
+        if (crDeleted) return@withContext true
+
+        val docDeleted = runCatching { DocumentFile.fromSingleUri(context, uri)?.delete() == true }
+            .getOrDefault(false)
+        if (docDeleted) return@withContext true
+
+        val path = if (uri.scheme == "file") uri.path else getRealPathFromUri(context, uri)
+        if (path != null) {
+            val file = File(path)
+            if (file.exists() && file.delete()) return@withContext true
+        }
+        false
+    }
+
+    fun cleanupAfterDelete(t: Track) {
+        scope.launch {
+            if (favorites.any { it.id == t.id }) {
+                favoritesRepository.toggleFavorite(t)
+            }
+            bookmarks.filter { it.track.id == t.id }.forEach { bm ->
+                bookmarksRepository.remove(bm.id)
+            }
+            playlists.forEach { p ->
+                playlistsRepository.removeFromPlaylist(p.id, t.id)
+            }
+            playerController.next()
+            onNavigateBack()
+        }
+    }
+
+    fun onDeletedOk(t: Track) {
+        Toast.makeText(context, Strings.trackDeleted(lang), Toast.LENGTH_SHORT).show()
+        cleanupAfterDelete(t)
+    }
+
+    fun onDeletedFail() {
+        Toast.makeText(context, Strings.deleteFailed(lang), Toast.LENGTH_SHORT).show()
+    }
+
+    fun onDeletedDenied() {
+        Toast.makeText(context, Strings.deleteNotAllowed(lang), Toast.LENGTH_LONG).show()
+    }
+
+    val intentSenderLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        val uri = pendingDeleteUri
+        val t = pendingDeleteTrack
+        pendingDeleteUri = null
+        pendingDeleteTrack = null
+        if (uri == null || t == null) return@rememberLauncherForActivityResult
+
+        if (result.resultCode == Activity.RESULT_OK) {
+            scope.launch {
+                val deleted = withContext(Dispatchers.IO) {
+                    var stillExists = runCatching {
+                        contentResolver.query(
+                            uri,
+                            arrayOf(MediaStore.MediaColumns._ID),
+                            null, null, null
+                        )?.use { it.moveToFirst() } ?: false
+                    }.getOrDefault(false)
+
+                    if (stillExists) {
+                        stillExists = !performDelete(uri)
+                    }
+                    if (stillExists) {
+                        val path = if (uri.scheme == "file") uri.path
+                        else getRealPathFromUri(context, uri)
+                        stillExists = path != null && File(path).exists()
+                    }
+                    !stillExists
+                }
+                if (deleted) onDeletedOk(t) else onDeletedFail()
+            }
+        } else {
+            onDeletedDenied()
+        }
+    }
+
+    val writePermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        val uri = pendingDeleteUri
+        val t = pendingDeleteTrack
+        pendingDeleteUri = null
+        pendingDeleteTrack = null
+        if (uri == null || t == null) return@rememberLauncherForActivityResult
+
+        if (!granted) {
+            onDeletedDenied()
+            return@rememberLauncherForActivityResult
+        }
+        scope.launch {
+            val deleted = performDelete(uri)
+            if (deleted) onDeletedOk(t) else onDeletedFail()
+        }
+    }
+
+    val allFilesAccessLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        val uri = pendingDeleteUri
+        val t = pendingDeleteTrack
+        pendingDeleteUri = null
+        pendingDeleteTrack = null
+        if (uri == null || t == null) return@rememberLauncherForActivityResult
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager()) {
+            scope.launch {
+                val deleted = performDelete(uri)
+                if (deleted) onDeletedOk(t) else onDeletedFail()
+            }
+        } else {
+            onDeletedDenied()
+        }
+    }
+
+    fun requestAllFilesAccess(uri: Uri, t: Track) {
+        pendingDeleteUri = uri
+        pendingDeleteTrack = t
+        runCatching {
+            allFilesAccessLauncher.launch(
+                Intent(
+                    Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                    Uri.parse("package:${context.packageName}")
+                )
+            )
+        }.onFailure {
+            pendingDeleteUri = null
+            pendingDeleteTrack = null
+            onDeletedFail()
+        }
+    }
+
+    fun fallbackDelete(uri: Uri, t: Track) {
+        scope.launch {
+            val deleted = performDelete(uri)
+            if (deleted) {
+                onDeletedOk(t)
+            } else {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
+                    !Environment.isExternalStorageManager()
+                ) {
+                    requestAllFilesAccess(uri, t)
+                } else {
+                    onDeletedFail()
+                }
+            }
+        }
+    }
+
+    fun launchMediaStoreDeleteRequest(uri: Uri, t: Track) {
+        pendingDeleteUri = uri
+        pendingDeleteTrack = t
+
+        val request = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            runCatching {
+                MediaStore.createDeleteRequest(contentResolver, listOf(uri))
+            }.getOrNull()
+        } else {
+            null
+        }
+
+        if (request == null) {
+            pendingDeleteUri = null
+            pendingDeleteTrack = null
+            fallbackDelete(uri, t)
+            return
+        }
+
+        runCatching {
+            intentSenderLauncher.launch(
+                IntentSenderRequest.Builder(request.intentSender).build()
+            )
+        }.onFailure {
+            pendingDeleteUri = null
+            pendingDeleteTrack = null
+            fallbackDelete(uri, t)
+        }
+    }
+
+    fun requestDelete(t: Track) {
+        val originalUri = runCatching { Uri.parse(t.uri) }.getOrNull()
+        if (originalUri == null) {
+            onDeletedFail()
+            return
+        }
+
+        if (originalUri.scheme == "file") {
+            scope.launch {
+                val deleted = performDelete(originalUri)
+                if (deleted) {
+                    onDeletedOk(t)
+                } else {
+                    when {
+                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> {
+                            if (Environment.isExternalStorageManager()) onDeletedFail()
+                            else requestAllFilesAccess(originalUri, t)
+                        }
+                        Build.VERSION.SDK_INT > Build.VERSION_CODES.P -> onDeletedDenied()
+                        else -> {
+                            pendingDeleteUri = originalUri
+                            pendingDeleteTrack = t
+                            writePermissionLauncher.launch(
+                                android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+                            )
+                        }
+                    }
+                }
+            }
+            return
+        }
+
+        val mediaUri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
+            originalUri.scheme == "content" &&
+            originalUri.authority != MediaStore.AUTHORITY
+        ) {
+            runCatching { MediaStore.getMediaUri(context, originalUri) }.getOrNull()
+                ?: originalUri
+        } else {
+            originalUri
+        }
+
+        when {
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> {
+                if (Environment.isExternalStorageManager()) {
+                    scope.launch {
+                        val deleted = performDelete(mediaUri)
+                        if (deleted) onDeletedOk(t)
+                        else launchMediaStoreDeleteRequest(mediaUri, t)
+                    }
+                } else {
+                    launchMediaStoreDeleteRequest(mediaUri, t)
+                }
+            }
+
+            Build.VERSION.SDK_INT == Build.VERSION_CODES.Q -> {
+                scope.launch {
+                    try {
+                        val deleted = withContext(Dispatchers.IO) {
+                            contentResolver.delete(mediaUri, null, null) > 0
+                        }
+                        if (deleted) {
+                            onDeletedOk(t)
+                        } else {
+                            val docDeleted = withContext(Dispatchers.IO) {
+                                runCatching {
+                                    DocumentFile.fromSingleUri(context, mediaUri)?.delete() == true
+                                }.getOrDefault(false)
+                            }
+                            if (docDeleted) onDeletedOk(t) else onDeletedFail()
+                        }
+                    } catch (e: RecoverableSecurityException) {
+                        pendingDeleteUri = mediaUri
+                        pendingDeleteTrack = t
+                        runCatching {
+                            intentSenderLauncher.launch(
+                                IntentSenderRequest.Builder(
+                                    e.userAction.actionIntent.intentSender
+                                ).build()
+                            )
+                        }.onFailure {
+                            pendingDeleteUri = null
+                            pendingDeleteTrack = null
+                            onDeletedFail()
+                        }
+                    } catch (e: SecurityException) {
+                        val docDeleted = withContext(Dispatchers.IO) {
+                            runCatching {
+                                DocumentFile.fromSingleUri(context, mediaUri)?.delete() == true
+                            }.getOrDefault(false)
+                        }
+                        if (docDeleted) onDeletedOk(t) else onDeletedDenied()
+                    } catch (e: Exception) {
+                        onDeletedFail()
+                    }
+                }
+            }
+
+            else -> {
+                val granted = ContextCompat.checkSelfPermission(
+                    context,
+                    android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+                ) == PackageManager.PERMISSION_GRANTED
+
+                if (granted) {
+                    scope.launch {
+                        val deleted = performDelete(originalUri)
+                        if (deleted) onDeletedOk(t) else onDeletedFail()
+                    }
+                } else {
+                    pendingDeleteUri = originalUri
+                    pendingDeleteTrack = t
+                    writePermissionLauncher.launch(
+                        android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+                    )
+                }
+            }
+        }
+    }
 
     if (track == null) {
         Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -225,7 +544,18 @@ fun NowPlayingScreen(
                     shape = RoundedCornerShape(16.dp),
                     color = MaterialTheme.colorScheme.surfaceVariant
                 ) {
-                    Box(modifier = Modifier.fillMaxSize()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .pointerInput(Unit) {
+                                detectTapGestures(
+                                    onLongPress = {
+                                        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                        showDeleteDialog = true
+                                    }
+                                )
+                            }
+                    ) {
                         ArtworkPlaceholder(Modifier.fillMaxSize())
                         if (coverModel != null) {
                             GlideArtwork(
@@ -312,13 +642,29 @@ fun NowPlayingScreen(
                             text = { Text(Strings.sendToPlaylists(lang)) },
                             onClick = { menuExpanded = false; showPlaylistSheet = true }
                         )
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    Strings.deleteFromDevice(lang),
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Filled.Delete,
+                                    null,
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            },
+                            onClick = { menuExpanded = false; showDeleteDialog = true }
+                        )
                     }
                 }
             }
 
             Spacer(Modifier.height(8.dp))
 
-            WaveformSeekBarWithGestures(
+            WaveformSeekBar(
                 progress = if (state.durationMs > 0)
                     state.positionMs.toFloat() / state.durationMs.toFloat() else 0f,
                 waveform = waveform,
@@ -327,7 +673,7 @@ fun NowPlayingScreen(
                 unplayedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f),
                 currentPositionMs = state.positionMs,
                 durationMs = state.durationMs,
-                onSeek = { f -> playerController.seekTo((f * state.durationMs).toLong()) }
+                onSeek = { f: Float -> playerController.seekTo((f * state.durationMs).toLong()) }
             )
 
             Spacer(Modifier.height(12.dp))
@@ -435,6 +781,29 @@ fun NowPlayingScreen(
                 )
             }
         }
+    }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text(Strings.deleteTrackTitle(lang)) },
+            text = { Text(Strings.deleteTrackText(lang, track.title)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteDialog = false
+                        requestDelete(track)
+                    }
+                ) {
+                    Text(Strings.delete(lang), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text(Strings.cancel(lang))
+                }
+            }
+        )
     }
 
     if (showSleepSheet) {
@@ -581,262 +950,15 @@ fun NowPlayingScreen(
     }
 }
 
-@Composable
-private fun WaveformSeekBarWithGestures(
-    progress: Float,
-    waveform: FloatArray,
-    seed: Long,
-    playedColor: Color,
-    unplayedColor: Color,
-    currentPositionMs: Long,
-    durationMs: Long,
-    onSeek: (Float) -> Unit
-) {
-    val view = LocalView.current
-    var isDragging by remember { mutableStateOf(false) }
-    var dragProgress by remember { mutableFloatStateOf(0f) }
-    var lastSeekTime by remember { mutableLongStateOf(0L) }
-
-    val effectiveProgress = if (isDragging) dragProgress else progress
-    val displayPositionMs = if (isDragging) {
-        (dragProgress * durationMs).toLong()
-    } else {
-        currentPositionMs
-    }
-
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(64.dp)
-                .pointerInput(durationMs) {
-                    forEachGesture {
-                        awaitPointerEventScope {
-                            val down = awaitFirstDown(requireUnconsumed = false)
-                            down.consume()
-
-                            isDragging = true
-                            view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-
-                            var current = (down.position.x / size.width).coerceIn(0f, 1f)
-                            dragProgress = current
-                            onSeek(current)
-                            lastSeekTime = System.currentTimeMillis()
-
-                            var pressed = true
-                            while (pressed) {
-                                val event = awaitPointerEvent()
-                                pressed = event.changes.any { it.pressed }
-                                if (pressed) {
-                                    val change = event.changes.first()
-                                    change.consume()
-                                    current = (change.position.x / size.width).coerceIn(0f, 1f)
-                                    dragProgress = current
-
-                                    val now = System.currentTimeMillis()
-                                    if (now - lastSeekTime > 50L) {
-                                        onSeek(current)
-                                        lastSeekTime = now
-                                    }
-                                }
-                            }
-
-                            isDragging = false
-                            onSeek(dragProgress)
-                        }
-                    }
-                }
-        ) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                drawWaveform(
-                    waveform = waveform,
-                    seed = seed,
-                    progress = effectiveProgress,
-                    playedColor = playedColor,
-                    unplayedColor = unplayedColor,
-                    barWidth = size.width,
-                    barHeight = size.height
-                )
-            }
+private fun getRealPathFromUri(context: android.content.Context, uri: Uri): String? {
+    return try {
+        val projection = arrayOf(MediaStore.Audio.Media.DATA)
+        context.contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
+            val columnIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
+            if (cursor.moveToFirst()) cursor.getString(columnIndex) else null
         }
-
-        Spacer(Modifier.height(4.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = formatDuration(displayPositionMs.coerceAtLeast(0L)),
-                style = MaterialTheme.typography.labelMedium,
-                color = if (isDragging) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = formatDuration(durationMs.coerceAtLeast(0L)),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-private fun DrawScope.drawWaveform(
-    waveform: FloatArray,
-    seed: Long,
-    progress: Float,
-    playedColor: Color,
-    unplayedColor: Color,
-    barWidth: Float,
-    barHeight: Float
-) {
-    if (waveform.isEmpty()) {
-        val random = java.util.Random(seed)
-        val binCount = 120
-        val binWidth = barWidth / binCount
-        val gap = binWidth * 0.2f
-        val actualBinWidth = binWidth - gap
-
-        for (i in 0 until binCount) {
-            val amplitude = random.nextFloat() * 0.8f + 0.2f
-            val h = amplitude * barHeight
-            val x = i * binWidth + gap / 2
-            val y = (barHeight - h) / 2
-            val color = if (i.toFloat() / binCount < progress) playedColor else unplayedColor
-            drawRect(color, Offset(x, y), androidx.compose.ui.geometry.Size(actualBinWidth, h))
-        }
-    } else {
-        val binCount = waveform.size
-        val binWidth = barWidth / binCount
-        val gap = binWidth * 0.2f
-        val actualBinWidth = binWidth - gap
-
-        for (i in 0 until binCount) {
-            val amplitude = waveform[i]
-            val h = amplitude * barHeight
-            val x = i * binWidth + gap / 2
-            val y = (barHeight - h) / 2
-            val color = if (i.toFloat() / binCount < progress) playedColor else unplayedColor
-            drawRect(color, Offset(x, y), androidx.compose.ui.geometry.Size(actualBinWidth, h))
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SleepTimerSheet(
-    lang: AppLanguage,
-    onStart: (mode: Int, minutes: Int, wait: Boolean) -> Unit,
-    onCancelTimer: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    var mode by remember { mutableIntStateOf(0) }
-    var hours by remember { mutableIntStateOf(0) }
-    var minutes by remember { mutableIntStateOf(30) }
-    var seconds by remember { mutableIntStateOf(0) }
-    var wait by remember { mutableStateOf(true) }
-
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-                .padding(bottom = 32.dp)
-        ) {
-            Text(
-                Strings.sleepStopTitle(lang),
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            Spacer(Modifier.height(16.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                TimeStepper(hours, 23) { hours = it }
-                Text(":", style = MaterialTheme.typography.titleLarge)
-                TimeStepper(minutes, 59) { minutes = it }
-                Text(":", style = MaterialTheme.typography.titleLarge)
-                TimeStepper(seconds, 59) { seconds = it }
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            RadioRow(Strings.sleepAfterTime(lang), mode == 0) { mode = 0 }
-            RadioRow(Strings.sleepTrackEnd(lang), mode == 1) { mode = 1 }
-            RadioRow(Strings.sleepQueueEnd(lang), mode == 2) { mode = 2 }
-
-            Spacer(Modifier.height(8.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    Strings.sleepWait(lang),
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.weight(1f)
-                )
-                Switch(checked = wait, onCheckedChange = { wait = it })
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                TextButton(onClick = { onCancelTimer(); onDismiss() }) {
-                    Text(Strings.cancel(lang))
-                }
-                TextButton(
-                    onClick = {
-                        val total = hours * 60 + minutes + if (seconds > 0) 1 else 0
-                        onStart(mode, total.coerceAtLeast(1), wait)
-                    }
-                ) {
-                    Text(Strings.start(lang))
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun RadioRow(label: String, selected: Boolean, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(label,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.weight(1f))
-        RadioButton(selected = selected, onClick = onClick)
-    }
-}
-
-@Composable
-private fun TimeStepper(value: Int, max: Int, onChange: (Int) -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = { onChange((value - 1).coerceIn(0, max)) }) {
-            Text("−", style = MaterialTheme.typography.titleMedium)
-        }
-        Text(
-            value.toString().padStart(2, '0'),
-            style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.width(48.dp),
-            textAlign = TextAlign.Center
-        )
-        IconButton(onClick = { onChange((value + 1).coerceIn(0, max)) }) {
-            Text("+", style = MaterialTheme.typography.titleMedium)
-        }
+    } catch (e: Exception) {
+        null
     }
 }
 
