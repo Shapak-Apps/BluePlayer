@@ -5,6 +5,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -165,11 +166,11 @@ fun BluePlayerNavHost(
             )
         }
         composable(Destinations.NOW_PLAYING) {
-            val options by container.playerController.options.collectAsState()
-
+            val playerState by container.playerController.state.collectAsStateWithLifecycle()
+            val playbackOptions by container.playerController.options.collectAsStateWithLifecycle()
             NowPlayingScreen(
                 state = playerState,
-                options = options,
+                options = playbackOptions,
                 playerController = container.playerController,
                 favoritesRepository = container.favoritesRepository,
                 playlistsRepository = container.playlistsRepository,
@@ -177,7 +178,8 @@ fun BluePlayerNavHost(
                 lang = lang,
                 onOpenDrawer = onOpenDrawer,
                 onEqualizerClick = onEqualizerClick,
-                onAlbumClick = { navController.navigate(Destinations.albumDetail(it)) }
+                onAlbumClick = { navController.navigate(route = Destinations.albumDetail(albumId = it)) },
+                onNavigateBack = { navController.popBackStack() }
             )
         }
         composable(Destinations.SETTINGS) {
