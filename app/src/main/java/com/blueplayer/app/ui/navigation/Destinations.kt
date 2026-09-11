@@ -14,6 +14,7 @@ object Destinations {
     const val EQUALIZER = "equalizer"
     const val SETTINGS = "settings"
     const val ABOUT = "about"
+    const val ORGANIZATION = "organization"
     const val NOW_PLAYING = "now_playing"
 
     const val ALBUM_DETAIL = "album_detail/{albumId}"

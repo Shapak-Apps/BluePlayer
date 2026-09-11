@@ -5,6 +5,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -29,7 +30,6 @@ import com.blueplayer.feature.folders.FoldersViewModelFactory
 import com.blueplayer.feature.genres.GenresScreen
 import com.blueplayer.feature.genres.GenresViewModelFactory
 import com.blueplayer.feature.library.LibraryScreen
-import com.blueplayer.feature.settings.about.AboutScreen
 import com.blueplayer.feature.library.LibraryViewModelFactory
 import com.blueplayer.feature.nowplaying.NowPlayingScreen
 import com.blueplayer.feature.playlists.PlaylistsScreen
@@ -39,6 +39,8 @@ import com.blueplayer.feature.search.SearchScreen
 import com.blueplayer.feature.search.SearchViewModelFactory
 import com.blueplayer.feature.settings.SettingsScreen
 import com.blueplayer.feature.settings.SettingsViewModelFactory
+import com.blueplayer.feature.settings.about.AboutScreen
+import com.blueplayer.feature.settings.about.OrganizationScreen
 import com.blueplayer.feature.settings.equalizer.EqualizerScreen
 
 @Composable
@@ -171,10 +173,10 @@ fun BluePlayerNavHost(
             )
         }
         composable(Destinations.NOW_PLAYING) {
-            val playerState by container.playerController.state.collectAsStateWithLifecycle()
+            val nowState by container.playerController.state.collectAsStateWithLifecycle()
             val playbackOptions by container.playerController.options.collectAsStateWithLifecycle()
             NowPlayingScreen(
-                state = playerState,
+                state = nowState,
                 options = playbackOptions,
                 playerController = container.playerController,
                 favoritesRepository = container.favoritesRepository,
@@ -200,7 +202,17 @@ fun BluePlayerNavHost(
             AboutScreen(
                 lang = lang,
                 onBack = { navController.popBackStack() },
-                onGithubClick = onGithubClick
+                onGithubClick = onGithubClick,
+                onOrganizationClick = { navController.navigate(Destinations.ORGANIZATION) }
+            )
+        }
+        composable(Destinations.ORGANIZATION) {
+            val uriHandler = LocalUriHandler.current
+            OrganizationScreen(
+                lang = lang,
+                onBack = { navController.popBackStack() },
+                onGithubOrgClick = { uriHandler.openUri("https://github.com/Shapak-Apps") },
+                onGithubDevClick = { uriHandler.openUri("https://github.com/aynazar-sylyyew-dev/") }
             )
         }
         composable(Destinations.EQUALIZER) {
