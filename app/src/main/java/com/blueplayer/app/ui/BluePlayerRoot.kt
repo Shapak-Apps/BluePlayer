@@ -181,7 +181,8 @@ fun BluePlayerRoot(
                             if (currentRoute != Destinations.SETTINGS &&
                                 currentRoute != Destinations.NOW_PLAYING &&
                                 currentRoute != Destinations.EQUALIZER &&
-                                currentRoute != Destinations.ABOUT
+                                currentRoute != Destinations.ABOUT &&
+                                currentRoute != Destinations.ORGANIZATION
                             ) {
                                 TopAppBar(
                                     title = { Text(text = titleForRoute(currentRoute, lang)) },
