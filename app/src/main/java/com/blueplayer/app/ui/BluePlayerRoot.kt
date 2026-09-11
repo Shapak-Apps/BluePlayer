@@ -153,7 +153,7 @@ fun BluePlayerRoot(
                             },
                             onAboutClick = {
                                 scope.launch { drawerState.close() }
-                                navController.navigate(Destinations.SETTINGS)
+                                navController.navigate(Destinations.ABOUT)
                             },
                             onExitClick = {
                                 context.stopService(Intent(context, MusicPlaybackService::class.java))
@@ -342,6 +342,7 @@ private fun titleForRoute(route: String?, lang: AppLanguage): String {
         Destinations.SETTINGS -> Strings.settings(lang)
         Destinations.SEARCH -> Strings.search(lang)
         Destinations.EQUALIZER -> Strings.equalizer(lang)
+        Destinations.ABOUT -> Strings.about(lang)
         else -> "Blue Player"
     }
 }
