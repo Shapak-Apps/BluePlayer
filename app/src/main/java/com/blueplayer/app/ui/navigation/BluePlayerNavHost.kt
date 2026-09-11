@@ -29,6 +29,7 @@ import com.blueplayer.feature.folders.FoldersViewModelFactory
 import com.blueplayer.feature.genres.GenresScreen
 import com.blueplayer.feature.genres.GenresViewModelFactory
 import com.blueplayer.feature.library.LibraryScreen
+import com.blueplayer.feature.settings.about.AboutScreen
 import com.blueplayer.feature.library.LibraryViewModelFactory
 import com.blueplayer.feature.nowplaying.NowPlayingScreen
 import com.blueplayer.feature.playlists.PlaylistsScreen
@@ -71,7 +72,11 @@ fun BluePlayerNavHost(
         PlaylistsViewModelFactory(container.playlistsRepository, container.playerController)
     }
     val settingsVmFactory = remember(container) {
-        SettingsViewModelFactory(container.themeRepository, container.languageRepository)
+        SettingsViewModelFactory(
+            container.themeRepository,
+            container.languageRepository,
+            container.settingsRepository
+        )
     }
     val searchVmFactory = remember(container) {
         SearchViewModelFactory(
@@ -185,9 +190,17 @@ fun BluePlayerNavHost(
         composable(Destinations.SETTINGS) {
             SettingsScreen(
                 viewModelFactory = settingsVmFactory,
+                settingsRepository = container.settingsRepository,
                 onBack = { navController.popBackStack() },
                 onGithubClick = onGithubClick,
                 onEqualizerClick = onEqualizerClick
+            )
+        }
+        composable(Destinations.ABOUT) {
+            AboutScreen(
+                lang = lang,
+                onBack = { navController.popBackStack() },
+                onGithubClick = onGithubClick
             )
         }
         composable(Destinations.EQUALIZER) {
