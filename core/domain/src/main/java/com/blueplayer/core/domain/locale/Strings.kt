@@ -495,4 +495,177 @@ object Strings {
         AppLanguage.ENGLISH -> "Android does not allow deleting this file"
         AppLanguage.TURKMEN -> "Android bu faýly pozmaga rugsat bermeýär"
     }
+    fun aboutDescription(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Современный музыкальный плеер для Android с нативным C++ бас-движком и Material 3 дизайном."
+        AppLanguage.ENGLISH -> "A modern music player for Android with a native C++ bass engine and Material 3 design."
+        AppLanguage.TURKMEN -> "Android üçin C++ bas dwigately we Material 3 dizaýnly häzirki zaman aýdym pleýeri."
+    }
+
+    fun aboutFeatures(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "✦ Фоновое воспроизведение\n✦ 15 пресетов эквалайзера + нативный бас\n✦ A-B луп, закладки, таймер сна\n✦ Обложки из iTunes API\n✦ 3 языка интерфейса"
+        AppLanguage.ENGLISH -> "✦ Background playback\n✦ 15 EQ presets + native bass engine\n✦ A-B loop, bookmarks, sleep timer\n✦ Online cover art from iTunes\n✦ 3 interface languages"
+        AppLanguage.TURKMEN -> "✦ Fon aýdymy\n✦ 15 EQ presety + tebigy bas\n✦ A-B gaýtalama, bellikler, uklaýyş taýmeri\n✦ iTunes-den onlaýn oblozhka\n✦ 3 interfeýs dili"
+    }
+
+    fun viewSource(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Исходный код на GitHub"
+        AppLanguage.ENGLISH -> "View source on GitHub"
+        AppLanguage.TURKMEN -> "GitHub-da çeşme kody"
+    }
+
+    fun shareApp(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Поделиться приложением"
+        AppLanguage.ENGLISH -> "Share app"
+        AppLanguage.TURKMEN -> "Programmany paýlaş"
+    }
+
+    fun sendFeedback(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Отправить отзыв"
+        AppLanguage.ENGLISH -> "Send feedback"
+        AppLanguage.TURKMEN -> "Seslenme iber"
+    }
+
+    fun madeWithLove(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Сделано с любовью в Туркменистане"
+        AppLanguage.ENGLISH -> "Made with love in Turkmenistan"
+        AppLanguage.TURKMEN -> "Türkmenistanda söýgi bilen ýasaldy"
+    }
+
+    fun settingsPlayback(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Воспроизведение"
+        AppLanguage.ENGLISH -> "Playback"
+        AppLanguage.TURKMEN -> "Aýdyş"
+    }
+
+    fun settingsPlaybackDesc(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Crossfade, фокус аудио, очередь"
+        AppLanguage.ENGLISH -> "Crossfade, audio focus, queue"
+        AppLanguage.TURKMEN -> "Crossfade, ses fokusy, nobat"
+    }
+
+    fun crossfade(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Плавный переход (crossfade)"
+        AppLanguage.ENGLISH -> "Crossfade"
+        AppLanguage.TURKMEN -> "Ýumşak geçiş"
+    }
+
+    fun crossfadeOff(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Выкл"
+        AppLanguage.ENGLISH -> "Off"
+        AppLanguage.TURKMEN -> "Öç"
+    }
+
+    fun crossfadeSeconds(lang: AppLanguage, seconds: Int) = when (lang) {
+        AppLanguage.RUSSIAN -> "$seconds сек"
+        AppLanguage.ENGLISH -> "$seconds sec"
+        AppLanguage.TURKMEN -> "$seconds sek"
+    }
+
+    fun audioFocus(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Приоритет аудио"
+        AppLanguage.ENGLISH -> "Audio focus"
+        AppLanguage.TURKMEN -> "Ses fokusy"
+    }
+
+    fun audioFocusPause(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Пауза"
+        AppLanguage.ENGLISH -> "Pause"
+        AppLanguage.TURKMEN -> "Pauza"
+    }
+
+    fun audioFocusDuck(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Приглушить"
+        AppLanguage.ENGLISH -> "Duck"
+        AppLanguage.TURKMEN -> "Peselt"
+    }
+
+    fun audioFocusIgnore(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Игнорировать"
+        AppLanguage.ENGLISH -> "Ignore"
+        AppLanguage.TURKMEN -> "Üns berme"
+    }
+
+    fun keepScreenOn(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Не выключать экран при воспроизведении"
+        AppLanguage.ENGLISH -> "Keep screen on while playing"
+        AppLanguage.TURKMEN -> "Aýdym wagty ekrany öçürme"
+    }
+
+    fun queuePersistence(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Сохранять очередь между запусками"
+        AppLanguage.ENGLISH -> "Persist queue between launches"
+        AppLanguage.TURKMEN -> "Nobaty açylyşlaryň arasynda sakla"
+    }
+
+    fun dynamicColors(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Динамические цвета (Material You)"
+        AppLanguage.ENGLISH -> "Dynamic colors (Material You)"
+        AppLanguage.TURKMEN -> "Dinamiki reňkler (Material You)"
+    }
+
+    fun accentColor(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Акцентный цвет"
+        AppLanguage.ENGLISH -> "Accent color"
+        AppLanguage.TURKMEN -> "Aksent reňki"
+    }
+
+    fun settingsAdvanced(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Дополнительно"
+        AppLanguage.ENGLISH -> "Advanced"
+        AppLanguage.TURKMEN -> "Goşmaça"
+    }
+
+    fun settingsAdvancedDesc(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Кэш, сброс, отладка"
+        AppLanguage.ENGLISH -> "Cache, reset, debug"
+        AppLanguage.TURKMEN -> "Keş, täzeden, debug"
+    }
+
+    fun clearImageCache(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Очистить кэш обложек"
+        AppLanguage.ENGLISH -> "Clear image cache"
+        AppLanguage.TURKMEN -> "Oblozhka keşini arassala"
+    }
+
+    fun cacheCleared(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Кэш очищен"
+        AppLanguage.ENGLISH -> "Cache cleared"
+        AppLanguage.TURKMEN -> "Keş arassalandy"
+    }
+
+    fun resetSettings(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Сбросить все настройки"
+        AppLanguage.ENGLISH -> "Reset all settings"
+        AppLanguage.TURKMEN -> "Ähli sazlamalary täzeden düz"
+    }
+
+    fun resetSettingsConfirmTitle(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Сбросить настройки?"
+        AppLanguage.ENGLISH -> "Reset settings?"
+        AppLanguage.TURKMEN -> "Sazlamalary täzeden düzmekmi?"
+    }
+
+    fun resetSettingsConfirmText(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Все ваши настройки будут возвращены к значениям по умолчанию. Это действие нельзя отменить."
+        AppLanguage.ENGLISH -> "All your settings will be restored to defaults. This cannot be undone."
+        AppLanguage.TURKMEN -> "Ähli sazlamalaryňyz deslapky ýagdaýyna gaýdyp geler. Bu hereket yzyna alynmaýar."
+    }
+
+    fun settingsReset(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Настройки сброшены"
+        AppLanguage.ENGLISH -> "Settings reset"
+        AppLanguage.TURKMEN -> "Sazlamalar täzeden düzüldi"
+    }
+
+    fun showWaveform(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Показывать волну в плеере"
+        AppLanguage.ENGLISH -> "Show waveform in player"
+        AppLanguage.TURKMEN -> "Pleýerde tolkuny görkez"
+    }
+
+    fun hapticFeedback(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Виброотдача"
+        AppLanguage.ENGLISH -> "Haptic feedback"
+        AppLanguage.TURKMEN -> "Wibrasiýa"
+    }
 }
