@@ -1,5 +1,6 @@
 package com.blueplayer.app.ui
 
+import android.content.Intent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
@@ -36,6 +37,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
@@ -51,12 +53,12 @@ import com.blueplayer.app.ui.permission.PermissionGate
 import com.blueplayer.app.ui.player.MiniPlayerBar
 import com.blueplayer.core.domain.locale.AppLanguage
 import com.blueplayer.core.domain.locale.Strings
+import com.blueplayer.core.domain.model.AccentColor
 import com.blueplayer.core.domain.model.Playlist
 import com.blueplayer.core.domain.model.ThemeMode
 import com.blueplayer.ui.theme.BluePlayerTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import android.content.Intent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,6 +68,7 @@ fun BluePlayerRoot(
 ) {
     val themeMode by container.themeRepository.themeMode.collectAsStateWithLifecycle()
     val lang by container.languageRepository.language.collectAsStateWithLifecycle()
+    val appSettings by container.settingsRepository.settings.collectAsStateWithLifecycle()
 
     val darkTheme = when (themeMode) {
         ThemeMode.SYSTEM -> isSystemInDarkTheme()
@@ -73,7 +76,16 @@ fun BluePlayerRoot(
         ThemeMode.DARK -> true
     }
 
-    BluePlayerTheme(darkTheme = darkTheme) {
+    val seedColor = if (appSettings.accentColor == AccentColor.DEFAULT) null
+    else Color(appSettings.accentColor.argb)
+
+    val useDynamicColors = appSettings.dynamicColors && seedColor == null
+
+    BluePlayerTheme(
+        darkTheme = darkTheme,
+        dynamicColor = useDynamicColors,
+        seedColor = seedColor
+    ) {
         PermissionGate {
             val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
             val scope = rememberCoroutineScope()
@@ -168,7 +180,8 @@ fun BluePlayerRoot(
                         topBar = {
                             if (currentRoute != Destinations.SETTINGS &&
                                 currentRoute != Destinations.NOW_PLAYING &&
-                                currentRoute != Destinations.EQUALIZER
+                                currentRoute != Destinations.EQUALIZER &&
+                                currentRoute != Destinations.ABOUT
                             ) {
                                 TopAppBar(
                                     title = { Text(text = titleForRoute(currentRoute, lang)) },
