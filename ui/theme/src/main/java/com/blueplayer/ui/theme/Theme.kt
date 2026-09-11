@@ -1,13 +1,17 @@
 package com.blueplayer.ui.theme
 
+import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -102,6 +106,48 @@ private val DarkColors = darkColorScheme(
     scrim = Color(0xFF000000),
 )
 
+private fun Color.mix(other: Color, fraction: Float): Color = Color(
+    red = red + (other.red - red) * fraction,
+    green = green + (other.green - green) * fraction,
+    blue = blue + (other.blue - blue) * fraction,
+    alpha = 1f
+)
+
+private val White = Color(0xFFFFFFFF)
+private val Black = Color(0xFF000000)
+
+private fun seededLight(seed: Color) = LightColors.copy(
+    primary = seed,
+    onPrimary = White,
+    primaryContainer = seed.mix(White, 0.85f),
+    onPrimaryContainer = seed.mix(Black, 0.45f),
+    secondary = seed.mix(Black, 0.1f),
+    onSecondary = White,
+    secondaryContainer = seed.mix(White, 0.8f),
+    onSecondaryContainer = seed.mix(Black, 0.45f),
+    tertiary = seed.mix(Black, 0.2f),
+    onTertiary = White,
+    tertiaryContainer = seed.mix(White, 0.75f),
+    onTertiaryContainer = seed.mix(Black, 0.45f),
+    surfaceTint = seed
+)
+
+private fun seededDark(seed: Color) = DarkColors.copy(
+    primary = seed.mix(White, 0.35f),
+    onPrimary = Black,
+    primaryContainer = seed.mix(Black, 0.55f),
+    onPrimaryContainer = seed.mix(White, 0.85f),
+    secondary = seed.mix(White, 0.25f),
+    onSecondary = Black,
+    secondaryContainer = seed.mix(Black, 0.65f),
+    onSecondaryContainer = seed.mix(White, 0.8f),
+    tertiary = seed.mix(White, 0.15f),
+    onTertiary = Black,
+    tertiaryContainer = seed.mix(Black, 0.6f),
+    onTertiaryContainer = seed.mix(White, 0.75f),
+    surfaceTint = seed.mix(White, 0.35f)
+)
+
 private val base = Typography()
 
 private fun TextStyle.sharp(weight: FontWeight): TextStyle =
@@ -128,10 +174,24 @@ private val AppTypography = Typography(
 @Composable
 fun BluePlayerTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    dynamicColor: Boolean = false,
+    seedColor: Color? = null,
     content: @Composable () -> Unit
 ) {
+    val context = LocalContext.current
+
+    val colorScheme = when {
+        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
+            if (darkTheme) dynamicDarkColorScheme(context)
+            else dynamicLightColorScheme(context)
+        seedColor != null ->
+            if (darkTheme) seededDark(seedColor) else seededLight(seedColor)
+        else ->
+            if (darkTheme) DarkColors else LightColors
+    }
+
     MaterialTheme(
-        colorScheme = if (darkTheme) DarkColors else LightColors,
+        colorScheme = colorScheme,
         typography = AppTypography
     ) {
         Surface(
