@@ -668,4 +668,51 @@ object Strings {
         AppLanguage.ENGLISH -> "Haptic feedback"
         AppLanguage.TURKMEN -> "Wibrasiýa"
     }
+    fun organizationTitle(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Об организации"
+        AppLanguage.ENGLISH -> "About the Organization"
+        AppLanguage.TURKMEN -> "Gurama barada"
+    }
+
+    fun organizationSub(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Команда, миссия и контакты"
+        AppLanguage.ENGLISH -> "Team, mission and contacts"
+        AppLanguage.TURKMEN -> "Topar, maksat we habarlaşma"
+    }
+
+    fun teamRole(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Мобильная разработка"
+        AppLanguage.ENGLISH -> "Mobile development"
+        AppLanguage.TURKMEN -> "Mobil programmalaşdyrma"
+    }
+
+    fun orgText(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Blue Player создан командой разработчиков Shapak из города Мары — центра Марыйского велаята Туркменистана."
+        AppLanguage.ENGLISH -> "Blue Player is built by the Shapak development team from Mary, the heart of the Mary region in Turkmenistan."
+        AppLanguage.TURKMEN -> "Blue Player Türkmenistanyň Mary welaýatynyň merkezi Mary şäherindäki Shapak programmistler topary tarapyndan döredildi."
+    }
+
+    fun missionTitle(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Наша миссия"
+        AppLanguage.ENGLISH -> "Our Mission"
+        AppLanguage.TURKMEN -> "Biziň maksadymyz"
+    }
+
+    fun missionText(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Наша цель — помогать людям в Туркменистане и за его пределами: мы создаём бесплатные и удобные приложения, которые стирают языковые и технические барьеры и делают технологии доступными каждому."
+        AppLanguage.ENGLISH -> "Our goal is to help people in Turkmenistan and beyond: we build free, friendly apps that remove language and technical barriers and make technology accessible to everyone."
+        AppLanguage.TURKMEN -> "Bizim maksadymyz — Türkmenistanda we onuň çäginden daşarda ýaşaýanlara kömek etmek: dil we tehniki päsgelçilikleri aýryp, tehnologiýalary hemmelere elýeterli edýän mugt we amatly programmalar döredýäris."
+    }
+
+    fun orgGithub(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "GitHub организации"
+        AppLanguage.ENGLISH -> "Organization GitHub"
+        AppLanguage.TURKMEN -> "Guramanyň GitHub-y"
+    }
+
+    fun supportTitle(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Поддержка"
+        AppLanguage.ENGLISH -> "Support"
+        AppLanguage.TURKMEN -> "Goldaw"
+    }
 }
