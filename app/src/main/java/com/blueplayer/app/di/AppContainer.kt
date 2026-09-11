@@ -26,6 +26,8 @@ import com.blueplayer.core.domain.repository.GenreRepository
 import com.blueplayer.core.domain.repository.BookmarksRepository
 import com.blueplayer.core.database.BookmarksRepositoryImpl
 import com.blueplayer.core.data.mediastore.MediaStoreGenreRepository
+import com.blueplayer.core.data.prefs.SharedPreferencesSettingsRepository
+import com.blueplayer.core.domain.repository.SettingsRepository
 class AppContainer(appContext: Context) {
 
     val trackRepository: TrackRepository = MediaStoreTrackRepository(appContext)
@@ -49,4 +51,6 @@ class AppContainer(appContext: Context) {
     val equalizerEngine: EqualizerEngine = EqualizerEngine()
 
     val bookmarksRepository: BookmarksRepository = BookmarksRepositoryImpl(appContext)
+    val settingsRepository: SettingsRepository =
+        SharedPreferencesSettingsRepository(appContext)
 }
