@@ -13,6 +13,7 @@ object Destinations {
     const val SEARCH = "search"
     const val EQUALIZER = "equalizer"
     const val SETTINGS = "settings"
+    const val ABOUT = "about"
     const val NOW_PLAYING = "now_playing"
 
     const val ALBUM_DETAIL = "album_detail/{albumId}"
