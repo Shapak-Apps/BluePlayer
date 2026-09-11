@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,23 +28,17 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CleaningServices
-import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.ColorLens
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.SettingsSuggest
-import androidx.compose.material.icons.filled.Smartphone
-import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -71,16 +66,18 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.blueplayer.core.domain.locale.AppLanguage
 import com.blueplayer.core.domain.locale.Strings
 import com.blueplayer.core.domain.model.AccentColor
 import com.blueplayer.core.domain.model.AudioFocusMode
 import com.blueplayer.core.domain.model.ThemeMode
+import com.blueplayer.core.domain.repository.SettingsRepository
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     viewModelFactory: ViewModelProvider.Factory,
-    settingsRepository: com.blueplayer.core.domain.repository.SettingsRepository,
+    settingsRepository: SettingsRepository,
     onBack: () -> Unit,
     onGithubClick: () -> Unit,
     onEqualizerClick: () -> Unit,
@@ -150,7 +147,7 @@ fun SettingsScreen(
                     Text(Strings.language(lang), style = MaterialTheme.typography.titleSmall)
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        com.blueplayer.core.domain.locale.AppLanguage.entries.forEach { language ->
+                        AppLanguage.entries.forEach { language ->
                             FilterChip(
                                 selected = state.language == language,
                                 onClick = { viewModel.setLanguage(language) },
@@ -165,8 +162,11 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(Strings.dynamicColors(lang), style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.weight(1f))
+                        Text(
+                            Strings.dynamicColors(lang),
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.weight(1f)
+                        )
                         Switch(
                             checked = state.appSettings.dynamicColors,
                             onCheckedChange = { viewModel.setDynamicColors(it) }
@@ -351,30 +351,42 @@ private fun AccentColorPicker(
     selected: AccentColor,
     onSelect: (AccentColor) -> Unit
 ) {
-    Row(
+    Column(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        AccentColor.entries.forEach { color ->
-            val isSelected = selected == color
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(Color(color.seed))
-                    .clickable { onSelect(color) }
-                    .then(
-                        if (isSelected) Modifier.background(Color.Transparent)
-                        else Modifier
-                    ),
-                contentAlignment = Alignment.Center
+        AccentColor.entries.chunked(4).forEach { rowColors ->
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(20.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                if (isSelected) {
+                rowColors.forEach { color ->
+                    val isSelected = selected == color
                     Box(
                         modifier = Modifier
-                            .size(20.dp)
-                            .background(Color.White, CircleShape)
-                    )
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .background(Color(color.argb))
+                            .then(
+                                if (isSelected) Modifier.border(
+                                    width = 3.dp,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    shape = CircleShape
+                                ) else Modifier
+                            )
+                            .clickable { onSelect(color) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (isSelected) {
+                            Icon(
+                                Icons.Filled.Check,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                    }
                 }
             }
         }
