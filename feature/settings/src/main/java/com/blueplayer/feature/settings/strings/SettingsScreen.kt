@@ -1,8 +1,15 @@
 package com.blueplayer.feature.settings
 
-import android.content.Context
+import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -14,49 +21,66 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.CleaningServices
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.ColorLens
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.filled.Restore
+import androidx.compose.material.icons.filled.SettingsSuggest
+import androidx.compose.material.icons.filled.Smartphone
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.blueplayer.core.domain.locale.AppLanguage
 import com.blueplayer.core.domain.locale.Strings
+import com.blueplayer.core.domain.model.AccentColor
+import com.blueplayer.core.domain.model.AudioFocusMode
 import com.blueplayer.core.domain.model.ThemeMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     viewModelFactory: ViewModelProvider.Factory,
+    settingsRepository: com.blueplayer.core.domain.repository.SettingsRepository,
     onBack: () -> Unit,
     onGithubClick: () -> Unit,
     onEqualizerClick: () -> Unit,
@@ -65,14 +89,13 @@ fun SettingsScreen(
     val viewModel: SettingsViewModel = viewModel(factory = viewModelFactory)
     val state by viewModel.state.collectAsStateWithLifecycle()
     val lang = state.language
-
     val context = LocalContext.current
-    val prefs = context.getSharedPreferences("blue_player_settings", Context.MODE_PRIVATE)
-    var normalize by remember { mutableStateOf(prefs.getBoolean("sound_normalize", true)) }
 
-    var expandedInterface by remember { mutableStateOf(false) }
+    var expandedInterface by remember { mutableStateOf(true) }
     var expandedSound by remember { mutableStateOf(false) }
-    var expandedAbout by remember { mutableStateOf(false) }
+    var expandedPlayback by remember { mutableStateOf(false) }
+    var expandedAdvanced by remember { mutableStateOf(false) }
+    var showResetDialog by remember { mutableStateOf(false) }
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -81,10 +104,10 @@ fun SettingsScreen(
     ) {
         Column(Modifier.verticalScroll(rememberScrollState())) {
             TopAppBar(
-                title = { Text("Blue Player") },
+                title = { Text(Strings.settings(lang)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = null)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -103,83 +126,60 @@ fun SettingsScreen(
                     expanded = expandedInterface,
                     onToggle = { expandedInterface = !expandedInterface }
                 ) {
-                    Text(
-                        Strings.theme(lang),
-                        style = MaterialTheme.typography.titleSmall
-                    )
+                    Text(Strings.theme(lang), style = MaterialTheme.typography.titleSmall)
                     Spacer(Modifier.height(8.dp))
-
-                    key(state.themeMode) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            FilterChip(
-                                selected = state.themeMode == ThemeMode.SYSTEM,
-                                onClick = { viewModel.setThemeMode(ThemeMode.SYSTEM) },
-                                label = {
-                                    Text(
-                                        Strings.themeSystem(lang),
-                                        color = if (state.themeMode == ThemeMode.SYSTEM)
-                                            MaterialTheme.colorScheme.onSecondaryContainer
-                                        else
-                                            MaterialTheme.colorScheme.onSurface
-                                    )
-                                }
-                            )
-                            FilterChip(
-                                selected = state.themeMode == ThemeMode.LIGHT,
-                                onClick = { viewModel.setThemeMode(ThemeMode.LIGHT) },
-                                label = {
-                                    Text(
-                                        Strings.themeLight(lang),
-                                        color = if (state.themeMode == ThemeMode.LIGHT)
-                                            MaterialTheme.colorScheme.onSecondaryContainer
-                                        else
-                                            MaterialTheme.colorScheme.onSurface
-                                    )
-                                }
-                            )
-                            FilterChip(
-                                selected = state.themeMode == ThemeMode.DARK,
-                                onClick = { viewModel.setThemeMode(ThemeMode.DARK) },
-                                label = {
-                                    Text(
-                                        Strings.themeDark(lang),
-                                        color = if (state.themeMode == ThemeMode.DARK)
-                                            MaterialTheme.colorScheme.onSecondaryContainer
-                                        else
-                                            MaterialTheme.colorScheme.onSurface
-                                    )
-                                }
-                            )
-                        }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(
+                            selected = state.themeMode == ThemeMode.SYSTEM,
+                            onClick = { viewModel.setThemeMode(ThemeMode.SYSTEM) },
+                            label = { Text(Strings.themeSystem(lang)) }
+                        )
+                        FilterChip(
+                            selected = state.themeMode == ThemeMode.LIGHT,
+                            onClick = { viewModel.setThemeMode(ThemeMode.LIGHT) },
+                            label = { Text(Strings.themeLight(lang)) }
+                        )
+                        FilterChip(
+                            selected = state.themeMode == ThemeMode.DARK,
+                            onClick = { viewModel.setThemeMode(ThemeMode.DARK) },
+                            label = { Text(Strings.themeDark(lang)) }
+                        )
                     }
 
                     Spacer(Modifier.height(16.dp))
-
-                    Text(
-                        Strings.language(lang),
-                        style = MaterialTheme.typography.titleSmall
-                    )
+                    Text(Strings.language(lang), style = MaterialTheme.typography.titleSmall)
                     Spacer(Modifier.height(8.dp))
-
-                    key(state.language) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            AppLanguage.entries.forEach { language ->
-                                FilterChip(
-                                    selected = state.language == language,
-                                    onClick = { viewModel.setLanguage(language) },
-                                    label = {
-                                        Text(
-                                            language.displayName,
-                                            color = if (state.language == language)
-                                                MaterialTheme.colorScheme.onSecondaryContainer
-                                            else
-                                                MaterialTheme.colorScheme.onSurface
-                                        )
-                                    }
-                                )
-                            }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        com.blueplayer.core.domain.locale.AppLanguage.entries.forEach { language ->
+                            FilterChip(
+                                selected = state.language == language,
+                                onClick = { viewModel.setLanguage(language) },
+                                label = { Text(language.displayName) }
+                            )
                         }
                     }
+
+                    Spacer(Modifier.height(20.dp))
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(Strings.dynamicColors(lang), style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.weight(1f))
+                        Switch(
+                            checked = state.appSettings.dynamicColors,
+                            onCheckedChange = { viewModel.setDynamicColors(it) }
+                        )
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+                    Text(Strings.accentColor(lang), style = MaterialTheme.typography.titleSmall)
+                    Spacer(Modifier.height(8.dp))
+                    AccentColorPicker(
+                        selected = state.appSettings.accentColor,
+                        onSelect = { viewModel.setAccentColor(it) }
+                    )
                 }
 
                 Spacer(Modifier.height(12.dp))
@@ -199,68 +199,208 @@ fun SettingsScreen(
                     ) {
                         Text(Strings.equalizer(lang))
                     }
-                    Spacer(Modifier.height(12.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            Strings.normalize(lang),
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Switch(
-                            checked = normalize,
-                            onCheckedChange = {
-                                normalize = it
-                                prefs.edit().putBoolean("sound_normalize", it).apply()
-                            },
-                            colors = SwitchDefaults.colors(
-                                checkedTrackColor = MaterialTheme.colorScheme.primary,
-                                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                                uncheckedTrackColor = MaterialTheme.colorScheme.surface,
-                                uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                uncheckedBorderColor = MaterialTheme.colorScheme.outline
-                            )
-                        )
-                    }
                 }
 
                 Spacer(Modifier.height(12.dp))
 
                 SettingsCard(
-                    icon = Icons.Filled.Info,
-                    title = Strings.about(lang),
-                    subtitle = Strings.aboutDesc(lang),
-                    expanded = expandedAbout,
-                    onToggle = { expandedAbout = !expandedAbout }
+                    icon = Icons.Filled.PlayCircle,
+                    title = Strings.settingsPlayback(lang),
+                    subtitle = Strings.settingsPlaybackDesc(lang),
+                    expanded = expandedPlayback,
+                    onToggle = { expandedPlayback = !expandedPlayback }
                 ) {
+                    Text(Strings.crossfade(lang), style = MaterialTheme.typography.titleSmall)
+                    Spacer(Modifier.height(8.dp))
                     Text(
-                        "${Strings.version(lang)}: 1.0.0",
-                        style = MaterialTheme.typography.bodyMedium
+                        if (state.appSettings.crossfadeSeconds == 0)
+                            Strings.crossfadeOff(lang)
+                        else
+                            Strings.crossfadeSeconds(lang, state.appSettings.crossfadeSeconds),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold
                     )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        "${Strings.developer(lang)}: Aýnazar Sylyýew",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    Slider(
+                        value = state.appSettings.crossfadeSeconds.toFloat(),
+                        onValueChange = { viewModel.setCrossfade(it.toInt()) },
+                        valueRange = 0f..12f,
+                        steps = 11
                     )
+
+                    Spacer(Modifier.height(20.dp))
+                    Text(Strings.audioFocus(lang), style = MaterialTheme.typography.titleSmall)
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(
+                            selected = state.appSettings.audioFocusMode == AudioFocusMode.PAUSE,
+                            onClick = { viewModel.setAudioFocus(AudioFocusMode.PAUSE) },
+                            label = { Text(Strings.audioFocusPause(lang)) }
+                        )
+                        FilterChip(
+                            selected = state.appSettings.audioFocusMode == AudioFocusMode.DUCK,
+                            onClick = { viewModel.setAudioFocus(AudioFocusMode.DUCK) },
+                            label = { Text(Strings.audioFocusDuck(lang)) }
+                        )
+                        FilterChip(
+                            selected = state.appSettings.audioFocusMode == AudioFocusMode.IGNORE,
+                            onClick = { viewModel.setAudioFocus(AudioFocusMode.IGNORE) },
+                            label = { Text(Strings.audioFocusIgnore(lang)) }
+                        )
+                    }
+
+                    Spacer(Modifier.height(20.dp))
+                    SettingToggle(
+                        title = Strings.keepScreenOn(lang),
+                        checked = state.appSettings.keepScreenOn,
+                        onChange = { viewModel.setKeepScreenOn(it) }
+                    )
+
                     Spacer(Modifier.height(12.dp))
+                    SettingToggle(
+                        title = Strings.queuePersistence(lang),
+                        checked = state.appSettings.queuePersistence,
+                        onChange = { viewModel.setQueuePersistence(it) }
+                    )
+
+                    Spacer(Modifier.height(12.dp))
+                    SettingToggle(
+                        title = Strings.showWaveform(lang),
+                        checked = state.appSettings.showWaveform,
+                        onChange = { viewModel.setShowWaveform(it) }
+                    )
+
+                    Spacer(Modifier.height(12.dp))
+                    SettingToggle(
+                        title = Strings.hapticFeedback(lang),
+                        checked = state.appSettings.hapticFeedback,
+                        onChange = { viewModel.setHapticFeedback(it) }
+                    )
+                }
+
+                Spacer(Modifier.height(12.dp))
+
+                SettingsCard(
+                    icon = Icons.Filled.SettingsSuggest,
+                    title = Strings.settingsAdvanced(lang),
+                    subtitle = Strings.settingsAdvancedDesc(lang),
+                    expanded = expandedAdvanced,
+                    onToggle = { expandedAdvanced = !expandedAdvanced }
+                ) {
                     OutlinedButton(
-                        onClick = onGithubClick,
+                        onClick = {
+                            val cacheDir = context.cacheDir
+                            val imageCache = java.io.File(cacheDir, "image_cache")
+                            if (imageCache.exists()) imageCache.deleteRecursively()
+                            Toast.makeText(context, Strings.cacheCleared(lang), Toast.LENGTH_SHORT).show()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.onSurface
+                            contentColor = MaterialTheme.colorScheme.primary
                         )
                     ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_github),
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                            tint = MaterialTheme.colorScheme.onSurface
+                        Icon(Icons.Filled.CleaningServices, null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(Strings.clearImageCache(lang))
+                    }
+
+                    Spacer(Modifier.height(12.dp))
+
+                    OutlinedButton(
+                        onClick = { showResetDialog = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(Strings.github(lang))
+                    ) {
+                        Icon(Icons.Filled.Restore, null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(Strings.resetSettings(lang))
                     }
                 }
             }
         }
+    }
+
+    if (showResetDialog) {
+        AlertDialog(
+            onDismissRequest = { showResetDialog = false },
+            icon = { Icon(Icons.Filled.Restore, null) },
+            title = { Text(Strings.resetSettingsConfirmTitle(lang)) },
+            text = { Text(Strings.resetSettingsConfirmText(lang)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.resetAll()
+                    showResetDialog = false
+                    Toast.makeText(context, Strings.settingsReset(lang), Toast.LENGTH_SHORT).show()
+                }) {
+                    Text(Strings.resetSettings(lang), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showResetDialog = false }) {
+                    Text(Strings.cancel(lang))
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun AccentColorPicker(
+    selected: AccentColor,
+    onSelect: (AccentColor) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
+    ) {
+        AccentColor.entries.forEach { color ->
+            val isSelected = selected == color
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(Color(color.seed))
+                    .clickable { onSelect(color) }
+                    .then(
+                        if (isSelected) Modifier.background(Color.Transparent)
+                        else Modifier
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isSelected) {
+                    Box(
+                        modifier = Modifier
+                            .size(20.dp)
+                            .background(Color.White, CircleShape)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingToggle(
+    title: String,
+    checked: Boolean,
+    onChange: (Boolean) -> Unit
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable { onChange(!checked) }
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            title,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.weight(1f)
+        )
+        Switch(checked = checked, onCheckedChange = onChange)
     }
 }
 
@@ -275,39 +415,53 @@ private fun SettingsCard(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surfaceVariant,
         contentColor = MaterialTheme.colorScheme.onSurface
     ) {
-        Column(Modifier.padding(16.dp)) {
+        Column(Modifier.padding(20.dp)) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable(onClick = onToggle),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(32.dp)
-                )
-                Spacer(Modifier.width(16.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        title,
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Text(
-                        subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                Surface(
+                    modifier = Modifier.size(40.dp),
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            icon,
+                            null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
                 }
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(title, style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold)
+                    Text(subtitle, style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Icon(
+                    Icons.Filled.ArrowDropDown,
+                    null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
-            if (expanded) {
-                Spacer(Modifier.height(16.dp))
-                content()
+            AnimatedVisibility(
+                visible = expanded,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                Column {
+                    Spacer(Modifier.height(16.dp))
+                    content()
+                }
             }
         }
     }
