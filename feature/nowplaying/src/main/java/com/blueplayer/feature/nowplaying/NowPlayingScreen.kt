@@ -84,6 +84,7 @@ import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.blueplayer.core.domain.locale.AppLanguage
 import com.blueplayer.core.domain.locale.Strings
+import com.blueplayer.core.domain.model.AppSettings
 import com.blueplayer.core.domain.model.Track
 import com.blueplayer.core.domain.player.PlaybackOptions
 import com.blueplayer.core.domain.player.PlayerController
@@ -108,6 +109,7 @@ private val SPEEDS = listOf(0.75f, 1f, 1.25f, 1.5f, 2f)
 fun NowPlayingScreen(
     state: PlayerState,
     options: PlaybackOptions,
+    settings: AppSettings,
     playerController: PlayerController,
     favoritesRepository: FavoritesRepository,
     playlistsRepository: PlaylistsRepository,
@@ -124,6 +126,10 @@ fun NowPlayingScreen(
     val scope = rememberCoroutineScope()
     val view = LocalView.current
     val contentResolver = context.contentResolver
+
+    LaunchedEffect(settings.keepScreenOn, state.isPlaying) {
+        view.keepScreenOn = settings.keepScreenOn && state.isPlaying
+    }
 
     val favorites by favoritesRepository.favorites.collectAsStateWithLifecycle()
     val playlists by playlistsRepository.playlists.collectAsStateWithLifecycle()
@@ -550,7 +556,11 @@ fun NowPlayingScreen(
                             .pointerInput(Unit) {
                                 detectTapGestures(
                                     onLongPress = {
-                                        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                        if (settings.hapticFeedback) {
+                                            view.performHapticFeedback(
+                                                HapticFeedbackConstants.LONG_PRESS
+                                            )
+                                        }
                                         showDeleteDialog = true
                                     }
                                 )
@@ -664,17 +674,29 @@ fun NowPlayingScreen(
 
             Spacer(Modifier.height(8.dp))
 
-            WaveformSeekBar(
-                progress = if (state.durationMs > 0)
-                    state.positionMs.toFloat() / state.durationMs.toFloat() else 0f,
-                waveform = waveform,
-                seed = seed,
-                playedColor = MaterialTheme.colorScheme.primary,
-                unplayedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f),
-                currentPositionMs = state.positionMs,
-                durationMs = state.durationMs,
-                onSeek = { f: Float -> playerController.seekTo((f * state.durationMs).toLong()) }
-            )
+            val seekProgress = if (state.durationMs > 0)
+                state.positionMs.toFloat() / state.durationMs.toFloat() else 0f
+
+            if (settings.showWaveform) {
+                WaveformSeekBar(
+                    progress = seekProgress,
+                    waveform = waveform,
+                    seed = seed,
+                    playedColor = MaterialTheme.colorScheme.primary,
+                    unplayedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f),
+                    currentPositionMs = state.positionMs,
+                    durationMs = state.durationMs,
+                    onSeek = { f: Float -> playerController.seekTo((f * state.durationMs).toLong()) },
+                    hapticEnabled = settings.hapticFeedback
+                )
+            } else {
+                SimpleSeekBar(
+                    progress = seekProgress,
+                    currentPositionMs = state.positionMs,
+                    durationMs = state.durationMs,
+                    onSeek = { f: Float -> playerController.seekTo((f * state.durationMs).toLong()) }
+                )
+            }
 
             Spacer(Modifier.height(12.dp))
         }
