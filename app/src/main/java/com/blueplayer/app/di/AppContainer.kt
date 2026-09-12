@@ -28,6 +28,7 @@ import com.blueplayer.core.domain.repository.SettingsRepository
 import com.blueplayer.core.domain.repository.ThemeRepository
 import com.blueplayer.core.domain.repository.TrackRepository
 import com.blueplayer.core.player.AudioSettingsWatcher
+import com.blueplayer.core.player.CoverCache
 import com.blueplayer.core.player.CrossfadeMonitor
 import com.blueplayer.core.player.EqualizerEngine
 import com.blueplayer.core.player.Media3PlayerController
@@ -39,18 +40,18 @@ class AppContainer(appContext: Context) {
 
     private val containerScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-    val trackRepository: TrackRepository = MediaStoreTrackRepository(appContext)
+    val settingsRepository: SettingsRepository =
+        SharedPreferencesSettingsRepository(appContext)
+
+    val trackRepository: TrackRepository =
+        MediaStoreTrackRepository(appContext, settingsRepository)
     val albumRepository: AlbumRepository = MediaStoreAlbumRepository(appContext)
     val artistRepository: ArtistRepository = MediaStoreArtistRepository(appContext)
     val folderRepository: FolderRepository = MediaStoreFolderRepository(appContext)
 
     val themeRepository: ThemeRepository = SharedPreferencesThemeRepository(appContext)
-
     val languageRepository: LanguageRepository =
         SharedPreferencesLanguageRepository(appContext)
-
-    val settingsRepository: SettingsRepository =
-        SharedPreferencesSettingsRepository(appContext)
 
     val queueStore: QueuePersistenceStore = QueuePersistenceStore(appContext)
 
@@ -65,6 +66,8 @@ class AppContainer(appContext: Context) {
     val equalizerEngine: EqualizerEngine = EqualizerEngine()
 
     val bookmarksRepository: BookmarksRepository = BookmarksRepositoryImpl(appContext)
+
+    val coverCache: CoverCache = CoverCache()
 
     init {
         CrossfadeMonitor.start(
