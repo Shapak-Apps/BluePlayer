@@ -199,6 +199,13 @@ fun SettingsScreen(
                     ) {
                         Text(Strings.equalizer(lang))
                     }
+
+                    Spacer(Modifier.height(12.dp))
+                    SettingToggle(
+                        title = Strings.normalize(lang),
+                        checked = state.appSettings.loudnessNormalization,
+                        onChange = { viewModel.setLoudnessNormalization(it) }
+                    )
                 }
 
                 Spacer(Modifier.height(12.dp))
