@@ -21,5 +21,6 @@ data class AppSettings(
     val keepScreenOn: Boolean = false,
     val queuePersistence: Boolean = true,
     val showWaveform: Boolean = true,
-    val hapticFeedback: Boolean = true
+    val hapticFeedback: Boolean = true,
+    val loudnessNormalization: Boolean = true
 )
