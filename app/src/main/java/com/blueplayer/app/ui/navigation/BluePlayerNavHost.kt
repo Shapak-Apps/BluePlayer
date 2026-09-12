@@ -77,7 +77,8 @@ fun BluePlayerNavHost(
         SettingsViewModelFactory(
             container.themeRepository,
             container.languageRepository,
-            container.settingsRepository
+            container.settingsRepository,
+            container.trackRepository
         )
     }
     val searchVmFactory = remember(container) {
@@ -181,6 +182,7 @@ fun BluePlayerNavHost(
                 options = playbackOptions,
                 settings = appSettings,
                 playerController = container.playerController,
+                coverCache = container.coverCache,
                 favoritesRepository = container.favoritesRepository,
                 playlistsRepository = container.playlistsRepository,
                 bookmarksRepository = container.bookmarksRepository,
@@ -195,6 +197,7 @@ fun BluePlayerNavHost(
             SettingsScreen(
                 viewModelFactory = settingsVmFactory,
                 settingsRepository = container.settingsRepository,
+                coverCache = container.coverCache,
                 onBack = { navController.popBackStack() },
                 onGithubClick = onGithubClick,
                 onEqualizerClick = onEqualizerClick
