@@ -252,6 +252,7 @@ fun BluePlayerRoot(
                             MiniPlayerBar(
                                 state = playerState,
                                 playerController = container.playerController,
+                                coverCache = container.coverCache,
                                 onExpand = { navController.navigate(Destinations.NOW_PLAYING) },
                                 onNavigate = { route -> navController.navigate(route) },
                                 onPlusClick = { showAddToPlaylistSheet = true }
