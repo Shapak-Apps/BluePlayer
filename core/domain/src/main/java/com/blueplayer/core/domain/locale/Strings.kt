@@ -1,5 +1,7 @@
 package com.blueplayer.core.domain.locale
 
+import com.blueplayer.core.domain.model.SortOrder
+
 object Strings {
     fun tracks(lang: AppLanguage) = when (lang) {
         AppLanguage.RUSSIAN -> "Треки"
@@ -622,9 +624,9 @@ object Strings {
     }
 
     fun clearImageCache(lang: AppLanguage) = when (lang) {
-        AppLanguage.RUSSIAN -> "Очистить кэш обложек"
+        AppLanguage.RUSSIAN -> "Очистить кэш изображений"
         AppLanguage.ENGLISH -> "Clear image cache"
-        AppLanguage.TURKMEN -> "Oblozhka keşini arassala"
+        AppLanguage.TURKMEN -> "Surat keşini arassala"
     }
 
     fun cacheCleared(lang: AppLanguage) = when (lang) {
@@ -714,5 +716,159 @@ object Strings {
         AppLanguage.RUSSIAN -> "Поддержка"
         AppLanguage.ENGLISH -> "Support"
         AppLanguage.TURKMEN -> "Goldaw"
+    }
+    fun settingsLibrary(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Библиотека"
+        AppLanguage.ENGLISH -> "Library"
+        AppLanguage.TURKMEN -> "Kitaphana"
+    }
+
+    fun settingsLibraryDesc(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Фильтры, сортировка, сканирование"
+        AppLanguage.ENGLISH -> "Filters, sorting, scanning"
+        AppLanguage.TURKMEN -> "Süzgüçler, tertipleme, skanerleme"
+    }
+
+    fun minTrackDuration(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Минимальная длительность трека"
+        AppLanguage.ENGLISH -> "Minimum track duration"
+        AppLanguage.TURKMEN -> "Minimal aýdym dowamlylygy"
+    }
+
+    fun minTrackDurationDesc(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Скрыть треки короче этого значения"
+        AppLanguage.ENGLISH -> "Hide tracks shorter than this"
+        AppLanguage.TURKMEN -> "Bu bahadan gysga aýdymlary gizle"
+    }
+
+    fun seconds(lang: AppLanguage, value: Int) = when (lang) {
+        AppLanguage.RUSSIAN -> "$value сек"
+        AppLanguage.ENGLISH -> "$value sec"
+        AppLanguage.TURKMEN -> "$value sek"
+    }
+
+    fun excludedFolders(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Исключённые папки"
+        AppLanguage.ENGLISH -> "Excluded folders"
+        AppLanguage.TURKMEN -> "Daşlanan bukjalar"
+    }
+
+    fun excludedFoldersDesc(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Треки из этих папок не будут показаны"
+        AppLanguage.ENGLISH -> "Tracks from these folders won't be shown"
+        AppLanguage.TURKMEN -> "Bu bukjalarдан aýdymlar görkezilmez"
+    }
+
+    fun addFolder(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Добавить папку"
+        AppLanguage.ENGLISH -> "Add folder"
+        AppLanguage.TURKMEN -> "Bukja goş"
+    }
+
+    fun folderName(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Название папки"
+        AppLanguage.ENGLISH -> "Folder name"
+        AppLanguage.TURKMEN -> "Bukja ady"
+    }
+
+    fun autoRescan(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Авто-сканирование при запуске"
+        AppLanguage.ENGLISH -> "Auto-scan on launch"
+        AppLanguage.TURKMEN -> "Açylanda awtomatiki skanerle"
+    }
+
+    fun autoRescanDesc(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Обновлять библиотеку при каждом запуске"
+        AppLanguage.ENGLISH -> "Refresh library on every launch"
+        AppLanguage.TURKMEN -> "Her açylanda kitaphanany täzeläň"
+    }
+
+    fun onlineCovers(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Онлайн-обложки"
+        AppLanguage.ENGLISH -> "Online covers"
+        AppLanguage.TURKMEN -> "Onlaýn oblozhkalar"
+    }
+
+    fun onlineCoversDesc(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Загружать обложки из интернета (трафик)"
+        AppLanguage.ENGLISH -> "Fetch covers from internet (uses data)"
+        AppLanguage.TURKMEN -> "Internetden oblozhka ýükle (trafik)"
+    }
+
+    fun defaultSort(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Сортировка по умолчанию"
+        AppLanguage.ENGLISH -> "Default sort order"
+        AppLanguage.TURKMEN -> "Deslapky tertipleme"
+    }
+
+    fun sortOrderName(lang: AppLanguage, order: SortOrder) = when (lang) {
+        AppLanguage.RUSSIAN -> when (order) {
+            SortOrder.TITLE_ASC -> "Название (А-Я)"
+            SortOrder.TITLE_DESC -> "Название (Я-А)"
+            SortOrder.DATE_ADDED_DESC -> "Дата добавления (новые)"
+            SortOrder.DATE_ADDED_ASC -> "Дата добавления (старые)"
+            SortOrder.DURATION_ASC -> "Длительность (короткие)"
+            SortOrder.DURATION_DESC -> "Длительность (длинные)"
+            SortOrder.ARTIST_ASC -> "Исполнитель (А-Я)"
+            SortOrder.ALBUM_ASC -> "Альбом (А-Я)"
+        }
+        AppLanguage.ENGLISH -> when (order) {
+            SortOrder.TITLE_ASC -> "Title (A-Z)"
+            SortOrder.TITLE_DESC -> "Title (Z-A)"
+            SortOrder.DATE_ADDED_DESC -> "Date added (newest)"
+            SortOrder.DATE_ADDED_ASC -> "Date added (oldest)"
+            SortOrder.DURATION_ASC -> "Duration (shortest)"
+            SortOrder.DURATION_DESC -> "Duration (longest)"
+            SortOrder.ARTIST_ASC -> "Artist (A-Z)"
+            SortOrder.ALBUM_ASC -> "Album (A-Z)"
+        }
+        AppLanguage.TURKMEN -> when (order) {
+            SortOrder.TITLE_ASC -> "At (A-Z)"
+            SortOrder.TITLE_DESC -> "At (Z-A)"
+            SortOrder.DATE_ADDED_DESC -> "Goşulan senesi (täze)"
+            SortOrder.DATE_ADDED_ASC -> "Goşulan senesi (köne)"
+            SortOrder.DURATION_ASC -> "Dowamlylygy (gysga)"
+            SortOrder.DURATION_DESC -> "Dowamlylygy (uzyn)"
+            SortOrder.ARTIST_ASC -> "Ýerine ýetiriji (A-Z)"
+            SortOrder.ALBUM_ASC -> "Albom (A-Z)"
+        }
+    }
+    fun add(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Добавить"
+        AppLanguage.ENGLISH -> "Add"
+        AppLanguage.TURKMEN -> "Goş"
+    }
+    fun rescanLibrary(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Пересканировать библиотеку"
+        AppLanguage.ENGLISH -> "Rescan library"
+        AppLanguage.TURKMEN -> "Kitaphanany täzeden skanerle"
+    }
+
+    fun libraryRescanned(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Библиотека обновлена"
+        AppLanguage.ENGLISH -> "Library updated"
+        AppLanguage.TURKMEN -> "Kitaphana täzelendi"
+    }
+    fun clearCoverCache(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Очистить кэш обложек"
+        AppLanguage.ENGLISH -> "Clear cover cache"
+        AppLanguage.TURKMEN -> "Oblozhka keşini arassala"
+    }
+
+    fun coverCacheCleared(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Кэш обложек очищен"
+        AppLanguage.ENGLISH -> "Cover cache cleared"
+        AppLanguage.TURKMEN -> "Oblozhka keşi arassalandy"
+    }
+    fun refreshCover(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Обновить обложку"
+        AppLanguage.ENGLISH -> "Refresh cover"
+        AppLanguage.TURKMEN -> "Oblozhkany täzele"
+    }
+
+    fun coverRefreshed(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Обложка обновлена"
+        AppLanguage.ENGLISH -> "Cover refreshed"
+        AppLanguage.TURKMEN -> "Oblozhka täzelendi"
     }
 }
