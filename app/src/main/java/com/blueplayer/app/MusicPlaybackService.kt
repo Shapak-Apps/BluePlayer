@@ -16,9 +16,15 @@ import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
+import androidx.media3.session.CommandButton
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionCommands
+import androidx.media3.session.SessionResult
 import com.blueplayer.app.audio.NativeBassProcessor
+import com.google.common.util.concurrent.Futures
+import com.google.common.util.concurrent.ListenableFuture
 
 class MusicPlaybackService : MediaSessionService() {
 
@@ -33,6 +39,8 @@ class MusicPlaybackService : MediaSessionService() {
         const val KEY_ARTIST = "artist"
         const val KEY_ALBUM = "album"
         const val KEY_ARTWORK = "artwork"
+
+        private const val REPEAT_COMMAND = "com.blueplayer.app.REPEAT"
     }
 
     private var mediaSession: MediaSession? = null
@@ -53,6 +61,10 @@ class MusicPlaybackService : MediaSessionService() {
             ) {
                 saveCurrentSession()
             }
+        }
+
+        override fun onRepeatModeChanged(repeatMode: Int) {
+            mediaSession?.setCustomLayout(buildRepeatLayout())
         }
     }
 
@@ -87,7 +99,6 @@ class MusicPlaybackService : MediaSessionService() {
             .build()
 
         exoPlayer.volume = 1.0f
-
         player = exoPlayer
 
         val sessionActivityIntent = Intent(this, MainActivity::class.java).apply {
@@ -100,9 +111,46 @@ class MusicPlaybackService : MediaSessionService() {
 
         mediaSession = MediaSession.Builder(this, exoPlayer)
             .setSessionActivity(sessionPendingIntent)
+            .setCallback(object : MediaSession.Callback {
+                override fun onConnect(
+                    session: MediaSession,
+                    controller: MediaSession.ControllerInfo
+                ): MediaSession.ConnectionResult {
+                    val sessionCommands = super.onConnect(session, controller)
+                        .availableSessionCommands
+                        .buildUpon()
+                        .add(SessionCommand(REPEAT_COMMAND, Bundle.EMPTY))
+                        .build()
+
+                    return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+                        .setAvailableSessionCommands(sessionCommands)
+                        .build()
+                }
+
+                override fun onCustomCommand(
+                    session: MediaSession,
+                    controller: MediaSession.ControllerInfo,
+                    customCommand: SessionCommand,
+                    args: Bundle
+                ): ListenableFuture<SessionResult> {
+                    if (customCommand.customAction == REPEAT_COMMAND) {
+                        player?.let { p ->
+                            p.repeatMode = when (p.repeatMode) {
+                                Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
+                                Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
+                                else -> Player.REPEAT_MODE_OFF
+                            }
+                        }
+                    }
+                    return Futures.immediateFuture(
+                        SessionResult(SessionResult.RESULT_SUCCESS)
+                    )
+                }
+            })
             .build()
 
         exoPlayer.addListener(sessionListener)
+        mediaSession?.setCustomLayout(buildRepeatLayout())
         publishAudioSessionId()
 
         if (exoPlayer.mediaItemCount == 0) {
@@ -110,9 +158,28 @@ class MusicPlaybackService : MediaSessionService() {
         }
     }
 
+    private fun buildRepeatLayout(): List<CommandButton> {
+        val iconRes = when (player?.repeatMode) {
+            Player.REPEAT_MODE_ONE -> R.drawable.ic_repeat_one
+            Player.REPEAT_MODE_ALL -> R.drawable.ic_repeat
+            else -> R.drawable.ic_repeat_off
+        }
+        return listOf(
+            CommandButton.Builder()
+                .setDisplayName("Repeat")
+                .setIconResId(iconRes)
+                .setSessionCommand(SessionCommand(REPEAT_COMMAND, Bundle.EMPTY))
+                .build()
+        )
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
         return START_STICKY
+    }
+
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? {
+        return mediaSession
     }
 
     private fun saveCurrentSession() {
@@ -182,10 +249,6 @@ class MusicPlaybackService : MediaSessionService() {
                 Bundle().apply { putInt(KEY_AUDIO_SESSION_ID, sessionId) }
             )
         }
-    }
-
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? {
-        return mediaSession
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
