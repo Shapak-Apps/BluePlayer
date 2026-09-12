@@ -18,6 +18,8 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.QueueMusic
+import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
@@ -28,6 +30,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,14 +40,18 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.blueplayer.app.ui.navigation.Destinations
+import com.blueplayer.core.domain.player.PlaybackOptions
 import com.blueplayer.core.domain.player.PlayerController
 import com.blueplayer.core.domain.player.PlayerState
+import com.blueplayer.core.domain.player.RepeatModeUi
 import com.blueplayer.core.player.CoverCache
+import com.blueplayer.ui.components.ArtworkPlaceholder
 import com.blueplayer.ui.components.GlideArtwork
 
 @Composable
 fun MiniPlayerBar(
     state: PlayerState,
+    options: PlaybackOptions,
     playerController: PlayerController,
     coverCache: CoverCache,
     onExpand: () -> Unit,
@@ -51,8 +60,16 @@ fun MiniPlayerBar(
 ) {
     val track = state.currentTrack
     val cachedCovers by coverCache.covers.collectAsStateWithLifecycle()
-    val coverModel: Any? = track?.let { t ->
-        t.artworkUri?.takeIf { it.isNotBlank() } ?: cachedCovers[t.id]
+
+    val onlineCover = track?.let { t -> cachedCovers[t.id] as? String }
+    val localCover = track?.artworkUri?.takeIf { it.isNotBlank() }
+
+    var onlineLoadFailed by remember(track?.id) { mutableStateOf(false) }
+
+    val coverModel: Any? = when {
+        onlineCover != null && !onlineLoadFailed -> onlineCover
+        localCover != null -> localCover
+        else -> null
     }
 
     AnimatedVisibility(visible = track != null) {
@@ -80,12 +97,25 @@ fun MiniPlayerBar(
                     .padding(horizontal = 8.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                GlideArtwork(
-                    model = coverModel,
+                androidx.compose.foundation.layout.Box(
                     modifier = Modifier
                         .size(40.dp)
                         .clip(RoundedCornerShape(8.dp))
-                )
+                        .background(MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.1f))
+                ) {
+                    ArtworkPlaceholder(Modifier.size(40.dp))
+                    if (coverModel != null) {
+                        GlideArtwork(
+                            model = coverModel,
+                            modifier = Modifier.size(40.dp),
+                            onError = {
+                                if (coverModel == onlineCover) {
+                                    onlineLoadFailed = true
+                                }
+                            }
+                        )
+                    }
+                }
 
                 Text(
                     track?.title.orEmpty(),
@@ -122,6 +152,19 @@ fun MiniPlayerBar(
                     .padding(horizontal = 12.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                IconButton(onClick = { playerController.cycleRepeatMode() }) {
+                    Icon(
+                        if (options.repeatMode == RepeatModeUi.ONE)
+                            Icons.Filled.RepeatOne
+                        else
+                            Icons.Filled.Repeat,
+                        null,
+                        tint = if (options.repeatMode == RepeatModeUi.OFF)
+                            MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.5f)
+                        else
+                            MaterialTheme.colorScheme.onPrimary
+                    )
+                }
                 IconButton(onClick = onPlusClick) {
                     Icon(Icons.Filled.Add, null,
                         tint = MaterialTheme.colorScheme.onPrimary)
