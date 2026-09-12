@@ -2,9 +2,11 @@ package com.blueplayer.core.player
 
 import android.content.ComponentName
 import android.content.Context
+import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
@@ -26,11 +28,12 @@ import java.util.concurrent.Executor
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 class Media3PlayerController(
     private val context: Context,
-    private val serviceComponent: ComponentName
+    private val serviceComponent: ComponentName,
+    private val onlineCovers: StateFlow<Map<String, Any>>
 ) : PlayerController {
 
     companion object {
-        private const val KEY_AUDIO_SESSION_ID = "audio_session_id"
+        const val AUDIO_SESSION_ID = "audio_session_id"
     }
 
     private val _state = MutableStateFlow(PlayerState())
@@ -79,7 +82,6 @@ class Media3PlayerController(
     }
 
     private val listener = object : Player.Listener {
-
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             if (sleepPending || sleepAtTrackEnd) {
                 controller?.pause()
@@ -102,12 +104,7 @@ class Media3PlayerController(
             if (playbackState == Player.STATE_ENDED && sleepAtQueueEnd) {
                 cancelSleepTimer()
             }
-            _state.update { it.copy(isBuffering = playbackState == Player.STATE_BUFFERING) }
             updateState()
-        }
-
-        override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
-            _options.update { it.copy(shuffleEnabled = shuffleModeEnabled) }
         }
 
         override fun onRepeatModeChanged(repeatMode: Int) {
@@ -120,67 +117,132 @@ class Media3PlayerController(
                     }
                 )
             }
+            updateState()
+        }
+
+        override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
+            _options.update { it.copy(shuffleEnabled = shuffleModeEnabled) }
         }
     }
 
-    override suspend fun connect() {
-        try {
-            withContext(Dispatchers.Main) {
-                if (controller != null || future != null) return@withContext
-
-                val sessionToken = SessionToken(context, serviceComponent)
-                val controllerFuture = MediaController.Builder(context, sessionToken).buildAsync()
-                future = controllerFuture
-
-                controllerFuture.addListener(
-                    {
-                        try {
-                            val mediaController = controllerFuture.get()
-                            controller = mediaController
-                            mediaController.addListener(listener)
-
-                            _options.update {
-                                it.copy(
-                                    shuffleEnabled = mediaController.shuffleModeEnabled,
-                                    repeatMode = when (mediaController.repeatMode) {
-                                        Player.REPEAT_MODE_ONE -> RepeatModeUi.ONE
-                                        Player.REPEAT_MODE_ALL -> RepeatModeUi.ALL
-                                        else -> RepeatModeUi.OFF
-                                    }
-                                )
-                            }
-
-                            val extras = mediaController.sessionExtras
-                            val sessionId = extras?.getInt(KEY_AUDIO_SESSION_ID, 0) ?: 0
-                            if (sessionId != 0) _audioSessionId.value = sessionId
-
-                            processPendingQueue()
-                            updateState()
-                            mainHandler.post(progressRunnable)
-                        } catch (e: Exception) {
-                            future = null
+    init {
+        Thread {
+            var lastId: String? = null
+            var lastCover: String? = null
+            while (!Thread.currentThread().isInterrupted) {
+                try {
+                    val c = controller
+                    val currentId = c?.currentMediaItem?.mediaId
+                    if (c != null && currentId != null) {
+                        if (currentId != lastId) {
+                            lastId = currentId
+                            lastCover = null
                         }
-                    },
-                    mainExecutor
-                )
+                        val cover = onlineCovers.value[currentId] as? String
+                        if (cover != null && cover != lastCover) {
+                            val target = cover
+                            mainHandler.post { updateCurrentItemArtwork(target) }
+                            lastCover = cover
+                        }
+                    }
+                    Thread.sleep(200)
+                } catch (_: Exception) {
+                }
             }
+        }.apply { isDaemon = true }.start()
+    }
+
+    override suspend fun connect() {
+        withContext(Dispatchers.Main) { connectInternal() }
+    }
+
+    override suspend fun disconnect() {
+        withContext(Dispatchers.Main) { disconnectInternal() }
+    }
+
+    private fun connectInternal() {
+        try {
+            if (controller != null || future != null) return
+            val sessionToken = SessionToken(context, serviceComponent)
+            val controllerFuture = MediaController.Builder(context, sessionToken).buildAsync()
+            future = controllerFuture
+
+            controllerFuture.addListener(
+                {
+                    try {
+                        val mediaController = controllerFuture.get()
+                        controller = mediaController
+                        mediaController.addListener(listener)
+
+                        _options.update {
+                            it.copy(
+                                shuffleEnabled = mediaController.shuffleModeEnabled,
+                                repeatMode = when (mediaController.repeatMode) {
+                                    Player.REPEAT_MODE_ONE -> RepeatModeUi.ONE
+                                    Player.REPEAT_MODE_ALL -> RepeatModeUi.ALL
+                                    else -> RepeatModeUi.OFF
+                                }
+                            )
+                        }
+
+                        val extras = mediaController.sessionExtras
+                        val sessionId = extras?.getInt(AUDIO_SESSION_ID, 0) ?: 0
+                        if (sessionId != 0) _audioSessionId.value = sessionId
+
+                        processPendingQueue()
+                        updateState()
+                        mainHandler.post(progressRunnable)
+                    } catch (e: Exception) {
+                        future = null
+                    }
+                },
+                mainExecutor
+            )
         } catch (e: Exception) {
             future = null
         }
     }
 
-    override suspend fun disconnect() {
+    private fun disconnectInternal() {
         try {
-            withContext(Dispatchers.Main) {
-                mainHandler.removeCallbacks(progressRunnable)
-                mainHandler.removeCallbacks(abRunnable)
-                controller?.removeListener(listener)
-                runCatching { future?.let { MediaController.releaseFuture(it) } }
-                controller = null
-                future = null
-            }
+            mainHandler.removeCallbacks(progressRunnable)
+            mainHandler.removeCallbacks(abRunnable)
+            controller?.removeListener(listener)
+            runCatching { future?.let { MediaController.releaseFuture(it) } }
+            controller = null
+            future = null
         } catch (e: Exception) {
         }
+    }
+
+    private fun updateCurrentItemArtwork(onlineCover: String) {
+        try {
+            val c = controller ?: return
+            val idx = c.currentMediaItemIndex
+            val oldItem = c.currentMediaItem ?: return
+            val oldMeta = oldItem.mediaMetadata
+
+            val newMeta = MediaMetadata.Builder()
+                .setTitle(oldMeta.title)
+                .setArtist(oldMeta.artist)
+                .setAlbumTitle(oldMeta.albumTitle)
+                .setArtworkUri(Uri.parse(onlineCover))
+                .build()
+
+            val newItem = oldItem.buildUpon()
+                .setMediaMetadata(newMeta)
+                .build()
+
+            c.replaceMediaItem(idx, newItem)
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun processPendingQueue() {
+        val tracks = pendingTracks ?: return
+        val index = pendingIndex
+        pendingTracks = null
+        playTracks(tracks, index)
     }
 
     override fun playTracks(tracks: List<Track>, startIndex: Int) {
@@ -191,24 +253,28 @@ class Media3PlayerController(
             pendingIndex = startIndex
             _state.update {
                 it.copy(
-                    queue = tracks, currentIndex = startIndex,
-                    currentTrack = tracks.getOrNull(startIndex),
+                    queue = tracks, currentTrack = tracks.getOrNull(startIndex),
                     durationMs = tracks.getOrNull(startIndex)?.durationMs ?: 0L,
                     positionMs = 0L
                 )
             }
+            connectInternal()
             return
         }
 
         try {
-            mediaController.setMediaItems(tracks.map { it.toMediaItem() }, startIndex, 0L)
+            val covers = onlineCovers.value
+            val mediaItems = tracks.map { track ->
+                val online = covers[track.id] as? String
+                track.toMediaItem(onlineCoverUrl = online)
+            }
+            mediaController.setMediaItems(mediaItems, startIndex, 0L)
             mediaController.prepare()
             mediaController.play()
 
             _state.update {
                 it.copy(
-                    queue = tracks, currentIndex = startIndex,
-                    currentTrack = tracks.getOrNull(startIndex),
+                    queue = tracks, currentTrack = tracks.getOrNull(startIndex),
                     durationMs = tracks.getOrNull(startIndex)?.durationMs ?: 0L,
                     positionMs = 0L
                 )
@@ -223,34 +289,39 @@ class Media3PlayerController(
         try {
             val c = controller ?: return
             if (c.isPlaying) c.pause() else c.play()
-        } catch (e: Exception) { /* безопасно */ }
+        } catch (e: Exception) {
+        }
     }
 
     override fun next() {
         try {
             controller?.seekToNextMediaItem()
             controller?.play()
-        } catch (e: Exception) { /* безопасно */ }
+        } catch (e: Exception) {
+        }
     }
 
     override fun previous() {
         try {
             controller?.seekToPreviousMediaItem()
             controller?.play()
-        } catch (e: Exception) { /* безопасно */ }
+        } catch (e: Exception) {
+        }
     }
 
     override fun seekTo(positionMs: Long) {
         try {
             controller?.seekTo(positionMs)
-        } catch (e: Exception) { /* безопасно */ }
+        } catch (e: Exception) {
+        }
     }
 
     override fun toggleShuffle() {
         try {
             val c = controller ?: return
             c.shuffleModeEnabled = !c.shuffleModeEnabled
-        } catch (e: Exception) { /* безопасно */ }
+        } catch (e: Exception) {
+        }
     }
 
     override fun cycleRepeatMode() {
@@ -261,14 +332,23 @@ class Media3PlayerController(
                 Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
                 else -> Player.REPEAT_MODE_OFF
             }
-        } catch (e: Exception) { /* безопасно */ }
+        } catch (e: Exception) {
+        }
     }
 
     override fun setPlaybackSpeed(speed: Float) {
         try {
             controller?.setPlaybackParameters(PlaybackParameters(speed))
             _state.update { it.copy(playbackSpeed = speed) }
-        } catch (e: Exception) { /* безопасно */ }
+        } catch (e: Exception) {
+        }
+    }
+
+    override fun setVolume(volume: Float) {
+        try {
+            controller?.setVolume(volume.coerceIn(0f, 1f))
+        } catch (e: Exception) {
+        }
     }
 
     override fun setABPointA() {
@@ -297,7 +377,10 @@ class Media3PlayerController(
         val r = Runnable {
             if (sleepWaitTrackFinish) sleepPending = true
             else {
-                try { controller?.pause() } catch (_: Exception) {}
+                try {
+                    controller?.pause()
+                } catch (_: Exception) {
+                }
                 cancelSleepTimer()
             }
         }
@@ -328,19 +411,6 @@ class Media3PlayerController(
         _options.update { it.copy(sleepTimerActive = false) }
     }
 
-    override fun setVolume(volume: Float) {
-        try {
-            controller?.setVolume(volume.coerceIn(0f, 1f))
-        } catch (e: Exception) { /* безопасно */ }
-    }
-
-    private fun processPendingQueue() {
-        val tracks = pendingTracks ?: return
-        val index = pendingIndex
-        pendingTracks = null
-        playTracks(tracks, index)
-    }
-
     private fun updateState() {
         val mediaController = controller ?: return
         val queue = _state.value.queue
@@ -354,7 +424,7 @@ class Media3PlayerController(
             ?: 0L
 
         val extras = mediaController.sessionExtras
-        val sessionId = extras?.getInt(KEY_AUDIO_SESSION_ID, 0) ?: 0
+        val sessionId = extras?.getInt(AUDIO_SESSION_ID, 0) ?: 0
         if (sessionId != 0) _audioSessionId.value = sessionId
 
         _state.update {
