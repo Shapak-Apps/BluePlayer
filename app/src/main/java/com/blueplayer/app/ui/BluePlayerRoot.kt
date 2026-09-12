@@ -59,6 +59,11 @@ import com.blueplayer.core.domain.model.ThemeMode
 import com.blueplayer.ui.theme.BluePlayerTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -97,6 +102,7 @@ fun BluePlayerRoot(
             val currentRoute = navBackStackEntry?.destination?.route
 
             val playerState by container.playerController.state.collectAsStateWithLifecycle()
+            val playbackOptions by container.playerController.options.collectAsStateWithLifecycle()
             val playlists by container.playlistsRepository.playlists.collectAsStateWithLifecycle()
             val favorites by container.favoritesRepository.favorites.collectAsStateWithLifecycle()
 
@@ -249,14 +255,26 @@ fun BluePlayerRoot(
                             }
                         },
                         bottomBar = {
-                            MiniPlayerBar(
-                                state = playerState,
-                                playerController = container.playerController,
-                                coverCache = container.coverCache,
-                                onExpand = { navController.navigate(Destinations.NOW_PLAYING) },
-                                onNavigate = { route -> navController.navigate(route) },
-                                onPlusClick = { showAddToPlaylistSheet = true }
-                            )
+                            val miniPlayerHidden =
+                                currentRoute == Destinations.SETTINGS ||
+                                        currentRoute == Destinations.ABOUT ||
+                                        currentRoute == Destinations.ORGANIZATION
+
+                            AnimatedVisibility(
+                                visible = !miniPlayerHidden,
+                                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+                            ) {
+                                MiniPlayerBar(
+                                    state = playerState,
+                                    options = playbackOptions,
+                                    playerController = container.playerController,
+                                    coverCache = container.coverCache,
+                                    onExpand = { navController.navigate(Destinations.NOW_PLAYING) },
+                                    onNavigate = { route -> navController.navigate(route) },
+                                    onPlusClick = { showAddToPlaylistSheet = true }
+                                )
+                            }
                         }
                     ) { paddingValues ->
                         BluePlayerNavHost(
