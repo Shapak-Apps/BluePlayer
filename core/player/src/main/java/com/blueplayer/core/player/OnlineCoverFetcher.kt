@@ -8,7 +8,10 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 
-class OnlineCoverFetcher(private val context: Context) {
+class OnlineCoverFetcher(
+    private val context: Context,
+    private val coverCache: CoverCache
+) {
 
     private val prefs by lazy {
         context.getSharedPreferences("blue_player_covers", Context.MODE_PRIVATE)
@@ -16,13 +19,32 @@ class OnlineCoverFetcher(private val context: Context) {
 
     suspend fun getCoverUrl(trackId: String, title: String, artist: String): String? =
         withContext(Dispatchers.IO) {
-            prefs.getString(trackId, null)?.let { return@withContext it }
+            val cached = prefs.getString(trackId, null)
+            if (cached == "NOT_FOUND") return@withContext null
+            if (cached != null) {
+                coverCache.put(trackId, cached)
+                return@withContext cached
+            }
+
             val url = fetchFromItunes(title, artist)
             if (url != null) {
                 prefs.edit().putString(trackId, url).apply()
+                coverCache.put(trackId, url)
+            } else {
+                prefs.edit().putString(trackId, "NOT_FOUND").apply()
             }
             url
         }
+
+    fun clearCache() {
+        prefs.edit().clear().apply()
+        coverCache.clear()
+    }
+
+    fun clearCacheForTrack(trackId: String) {
+        prefs.edit().remove(trackId).apply()
+        coverCache.remove(trackId)
+    }
 
     private fun fetchFromItunes(title: String, artist: String): String? {
         return try {
@@ -42,7 +64,8 @@ class OnlineCoverFetcher(private val context: Context) {
             val results = json.optJSONArray("results") ?: return null
             val first = results.optJSONObject(0) ?: return null
             val art = first.optString("artworkUrl100", "")
-            if (art.isEmpty()) null else art.replace("100x100bb", "600x600bb").replace("100x100", "600x600")
+            if (art.isEmpty()) null
+            else art.replace("100x100bb", "600x600bb").replace("100x100", "600x600")
         } catch (e: Exception) {
             null
         }
