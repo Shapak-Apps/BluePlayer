@@ -131,8 +131,17 @@ dependencies {
     implementation("com.google.android.material:material:1.12.0")
 
     debugImplementation(libs.compose.ui.tooling)
-    implementation(libs.media3.ui)
+
     implementation("androidx.core:core-splashscreen:1.0.1")
     implementation("com.github.bumptech.glide:glide:4.16.0")
     implementation("com.github.bumptech.glide:compose:1.0.0-beta01")
+}
+
+configurations.all {
+    resolutionStrategy {
+        force("androidx.media3:media3-session:1.4.1")
+        force("androidx.media3:media3-common:1.4.1")
+        force("androidx.media3:media3-exoplayer:1.4.1")
+        force("androidx.media3:media3-ui:1.4.1")
+    }
 }
