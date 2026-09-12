@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -56,6 +57,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -119,11 +121,13 @@ fun OrganizationScreen(
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                OrgCoverBanner(enter = stagger(0f))
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .offset(y = ((1f - stagger(0f)) * 24).dp)
-                        .alpha(stagger(0f)),
+                        .offset(y = ((1f - stagger(0.12f)) * 24).dp)
+                        .alpha(stagger(0.12f)),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(
@@ -162,25 +166,49 @@ fun OrganizationScreen(
                 }
 
                 OrgAuthorCard(
-                    enter = stagger(0.1f),
+                    enter = stagger(0.26f),
                     lang = lang,
                     onGithubDevClick = onGithubDevClick
                 )
-                OrgInfoCard(enter = stagger(0.25f), lang = lang)
+                OrgInfoCard(enter = stagger(0.4f), lang = lang)
                 OrgMissionCard(
-                    enter = stagger(0.4f),
+                    enter = stagger(0.54f),
                     heartScale = heartScale,
                     lang = lang
                 )
                 OrgGithubCard(
-                    enter = stagger(0.55f),
+                    enter = stagger(0.68f),
                     lang = lang,
                     onClick = onGithubOrgClick
                 )
-                OrgEmailCard(enter = stagger(0.7f), lang = lang)
+                OrgEmailCard(enter = stagger(0.82f), lang = lang)
                 Spacer(Modifier.height(20.dp))
             }
         }
+    }
+}
+
+@Composable
+private fun OrgCoverBanner(enter: Float) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .offset(y = ((1f - enter) * 24).dp)
+            .alpha(enter),
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        shadowElevation = 8.dp
+    ) {
+        Image(
+            painter = painterResource(id = R.drawable.cover),
+            contentDescription = null,
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(16f / 9f)
+                .clip(RoundedCornerShape(24.dp)),
+            contentScale = ContentScale.Crop
+        )
     }
 }
 
