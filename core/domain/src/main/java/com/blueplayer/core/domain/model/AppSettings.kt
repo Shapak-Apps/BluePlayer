@@ -13,6 +13,17 @@ enum class AccentColor(val displayName: String, val argb: Int) {
     PURPLE("Violet", 0xFF6A1B9A.toInt())
 }
 
+enum class SortOrder(val displayNameResKey: String) {
+    TITLE_ASC("sortTitleAsc"),
+    TITLE_DESC("sortTitleDesc"),
+    DATE_ADDED_DESC("sortDateDesc"),
+    DATE_ADDED_ASC("sortDateAsc"),
+    DURATION_ASC("sortDurationAsc"),
+    DURATION_DESC("sortDurationDesc"),
+    ARTIST_ASC("sortArtistAsc"),
+    ALBUM_ASC("sortAlbumAsc")
+}
+
 data class AppSettings(
     val dynamicColors: Boolean = false,
     val accentColor: AccentColor = AccentColor.DEFAULT,
@@ -22,5 +33,10 @@ data class AppSettings(
     val queuePersistence: Boolean = true,
     val showWaveform: Boolean = true,
     val hapticFeedback: Boolean = true,
-    val loudnessNormalization: Boolean = true
+    val loudnessNormalization: Boolean = true,
+    val minTrackDurationSeconds: Int = 30,
+    val excludedFolders: Set<String> = setOf("Ringtones", "Notifications", "Alarms"),
+    val autoRescanOnLaunch: Boolean = true,
+    val onlineCoversEnabled: Boolean = true,
+    val defaultSortOrder: SortOrder = SortOrder.TITLE_ASC
 )
