@@ -99,7 +99,6 @@ import com.blueplayer.core.player.WaveformExtractor
 import com.blueplayer.ui.components.ArtworkPlaceholder
 import com.blueplayer.ui.components.GlideArtwork
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -140,16 +139,20 @@ fun NowPlayingScreen(
 
     val coverFetcher = remember { OnlineCoverFetcher(context, coverCache) }
 
-    // === Обложка: глобальный кэш ===
     val cachedCovers by coverCache.covers.collectAsStateWithLifecycle()
+
     val coverModel: Any? = track?.let { t ->
-        t.artworkUri?.takeIf { it.isNotBlank() } ?: cachedCovers[t.id]
+        val online = cachedCovers[t.id] as? String
+        if (online != null) {
+            online
+        } else {
+            t.artworkUri?.takeIf { it.isNotBlank() }
+        }
     }
 
-    // Автоматическая загрузка из iTunes, если локальной обложки нет
     LaunchedEffect(track?.id, settings.onlineCoversEnabled) {
         val t = track ?: return@LaunchedEffect
-        if (t.artworkUri.isNullOrBlank() && settings.onlineCoversEnabled) {
+        if (settings.onlineCoversEnabled) {
             coverFetcher.getCoverUrl(t.id, t.title, t.artist)
         }
     }
@@ -575,7 +578,8 @@ fun NowPlayingScreen(
                         if (coverModel != null) {
                             GlideArtwork(
                                 model = coverModel,
-                                modifier = Modifier.fillMaxSize()
+                                modifier = Modifier.fillMaxSize(),
+                                onError = { }
                             )
                         }
                     }
