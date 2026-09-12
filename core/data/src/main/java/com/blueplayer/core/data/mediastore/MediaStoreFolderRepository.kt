@@ -7,16 +7,20 @@ import android.provider.MediaStore
 import com.blueplayer.core.domain.model.Folder
 import com.blueplayer.core.domain.model.Track
 import com.blueplayer.core.domain.repository.FolderRepository
+import com.blueplayer.core.domain.repository.SettingsRepository
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 import java.io.File
 
 class MediaStoreFolderRepository(
-    private val context: Context
+    private val context: Context,
+    private val settingsRepository: SettingsRepository,
+    private val onlineCovers: StateFlow<Map<String, Any>>
 ) : FolderRepository {
 
     override suspend fun getFolders(): List<Folder> = withContext(Dispatchers.IO) {
-        val tracks = fetchAllTracksInternal()
+        val tracks = getFilteredTracks()
         val folderMap = linkedMapOf<String, MutableList<Track>>()
 
         tracks.forEach { track ->
@@ -35,7 +39,17 @@ class MediaStoreFolderRepository(
     }
 
     override suspend fun getTracksForFolder(folderPath: String): List<Track> = withContext(Dispatchers.IO) {
-        fetchAllTracksInternal().filter { it.folderPath == folderPath }
+        getFilteredTracks().filter { it.folderPath == folderPath }
+    }
+
+    private suspend fun getFilteredTracks(): List<Track> {
+        val raw = fetchAllTracksInternal()
+        val settings = settingsRepository.settings.value
+        return TrackFilter.mergeCovers(
+            TrackFilter.apply(raw, settings),
+            settings,
+            onlineCovers.value
+        )
     }
 
     private fun fetchAllTracksInternal(): List<Track> {
