@@ -62,6 +62,7 @@ import com.blueplayer.core.domain.locale.AppLanguage
 import com.blueplayer.core.domain.locale.Strings
 import com.blueplayer.core.player.BandInfo
 import com.blueplayer.core.player.EqualizerEngine
+import com.blueplayer.core.player.VolumeHolder
 import com.blueplayer.core.domain.player.PlayerController
 import kotlin.math.pow
 
@@ -290,9 +291,9 @@ fun EqualizerScreen(
                             onValueChange = { v ->
                                 preGain = v
                                 engine.setPreGain(v)
-                                playerController.setVolume(
-                                    if (v < 0) 10f.pow(v / 20f) else 1f
-                                )
+                                val vol = if (v < 0) 10f.pow(v / 20f) else 1f
+                                VolumeHolder.base = vol
+                                playerController.setVolume(vol)
                             },
                             valueRange = -20f..20f,
                             enabled = enabled,
