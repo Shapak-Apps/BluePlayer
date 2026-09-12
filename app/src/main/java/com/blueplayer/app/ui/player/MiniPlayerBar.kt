@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.List
@@ -26,27 +27,37 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.blueplayer.app.ui.navigation.Destinations
 import com.blueplayer.core.domain.player.PlayerController
 import com.blueplayer.core.domain.player.PlayerState
-import com.blueplayer.ui.components.ArtworkBox
+import com.blueplayer.core.player.CoverCache
+import com.blueplayer.ui.components.GlideArtwork
 
 @Composable
 fun MiniPlayerBar(
     state: PlayerState,
     playerController: PlayerController,
+    coverCache: CoverCache,
     onExpand: () -> Unit,
     onNavigate: (String) -> Unit,
-    onPlusClick: () -> Unit,
-    modifier: Modifier = Modifier
+    onPlusClick: () -> Unit
 ) {
-    AnimatedVisibility(visible = state.currentTrack != null) {
+    val track = state.currentTrack
+    val cachedCovers by coverCache.covers.collectAsStateWithLifecycle()
+    val coverModel: Any? = track?.let { t ->
+        t.artworkUri?.takeIf { it.isNotBlank() } ?: cachedCovers[t.id]
+    }
+
+    AnimatedVisibility(visible = track != null) {
         Column(
-            modifier = modifier
+            modifier = Modifier
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.primary)
         ) {
@@ -69,14 +80,15 @@ fun MiniPlayerBar(
                     .padding(horizontal = 8.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                ArtworkBox(
-                    artworkUri = state.currentTrack?.artworkUri,
-                    fallbackText = state.currentTrack?.title.orEmpty(),
-                    modifier = Modifier.size(40.dp)
+                GlideArtwork(
+                    model = coverModel,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(8.dp))
                 )
 
                 Text(
-                    state.currentTrack?.title.orEmpty(),
+                    track?.title.orEmpty(),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.bodyLarge,
