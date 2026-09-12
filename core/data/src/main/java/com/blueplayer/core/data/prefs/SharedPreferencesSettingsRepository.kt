@@ -6,12 +6,10 @@ import com.blueplayer.core.domain.model.AccentColor
 import com.blueplayer.core.domain.model.AppSettings
 import com.blueplayer.core.domain.model.AudioFocusMode
 import com.blueplayer.core.domain.repository.SettingsRepository
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class SharedPreferencesSettingsRepository(
@@ -21,11 +19,14 @@ class SharedPreferencesSettingsRepository(
     private val prefs: SharedPreferences =
         context.getSharedPreferences("app_settings", Context.MODE_PRIVATE)
 
+    private val legacyPrefs: SharedPreferences =
+        context.getSharedPreferences("blue_player_settings", Context.MODE_PRIVATE)
+
     private val _settings = MutableStateFlow(load())
     override val settings: StateFlow<AppSettings> = _settings.asStateFlow()
 
     private fun load(): AppSettings = AppSettings(
-        dynamicColors = prefs.getBoolean("dynamic_colors", true),
+        dynamicColors = prefs.getBoolean("dynamic_colors", false),
         accentColor = runCatching {
             AccentColor.valueOf(prefs.getString("accent_color", "DEFAULT") ?: "DEFAULT")
         }.getOrDefault(AccentColor.DEFAULT),
@@ -36,7 +37,8 @@ class SharedPreferencesSettingsRepository(
         keepScreenOn = prefs.getBoolean("keep_screen_on", false),
         queuePersistence = prefs.getBoolean("queue_persistence", true),
         showWaveform = prefs.getBoolean("show_waveform", true),
-        hapticFeedback = prefs.getBoolean("haptic_feedback", true)
+        hapticFeedback = prefs.getBoolean("haptic_feedback", true),
+        loudnessNormalization = legacyPrefs.getBoolean("sound_normalize", true)
     )
 
     override suspend fun update(update: (AppSettings) -> AppSettings) =
@@ -51,6 +53,10 @@ class SharedPreferencesSettingsRepository(
                 .putBoolean("queue_persistence", new.queuePersistence)
                 .putBoolean("show_waveform", new.showWaveform)
                 .putBoolean("haptic_feedback", new.hapticFeedback)
+                .putBoolean("loudness_normalization", new.loudnessNormalization)
+                .apply()
+            legacyPrefs.edit()
+                .putBoolean("sound_normalize", new.loudnessNormalization)
                 .apply()
             _settings.value = new
         }
