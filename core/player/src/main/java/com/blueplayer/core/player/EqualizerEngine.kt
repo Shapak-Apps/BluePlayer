@@ -34,6 +34,7 @@ class EqualizerEngine {
             "Acoustic" to floatArrayOf(20f, 15f, 5f, 0f, 10f, 20f, 30f, 25f, 15f, 5f),
             "Loudness" to floatArrayOf(40f, 30f, 10f, 0f, -5f, 0f, 10f, 20f, 35f, 45f)
         )
+        private const val LOUDNESS_TARGET_MB = 600
     }
 
     private var eq: Equalizer? = null
@@ -52,6 +53,8 @@ class EqualizerEngine {
     var bassBoostPercent = 0f
         private set
     var reverbPreset = PresetReverb.PRESET_NONE
+        private set
+    var loudnessEnabled = true
         private set
 
     val isAvailable: Boolean get() = eq != null
@@ -73,6 +76,7 @@ class EqualizerEngine {
         bass?.enabled = isEnabled
         virt?.enabled = isEnabled
         reverb?.enabled = isEnabled
+        applyLoudnessState()
 
         BassDsp.enabled = isEnabled
         applyBassToNative()
@@ -84,7 +88,21 @@ class EqualizerEngine {
         runCatching { bass?.enabled = on }
         runCatching { virt?.enabled = on }
         runCatching { reverb?.enabled = on }
+        applyLoudnessState()
         BassDsp.enabled = on
+    }
+
+    fun setLoudnessNormalization(enabled: Boolean) {
+        loudnessEnabled = enabled
+        applyLoudnessState()
+    }
+
+    private fun applyLoudnessState() {
+        val shouldEnable = isEnabled && loudnessEnabled
+        runCatching {
+            loud?.enabled = shouldEnable
+            if (shouldEnable) loud?.setTargetGain(LOUDNESS_TARGET_MB)
+        }
     }
 
     fun setPreGain(db: Float) {
