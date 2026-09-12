@@ -7,8 +7,6 @@ import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.provider.MediaStore
-import com.blueplayer.core.domain.model.AppSettings
-import com.blueplayer.core.domain.model.SortOrder
 import com.blueplayer.core.domain.model.Track
 import com.blueplayer.core.domain.repository.SettingsRepository
 import com.blueplayer.core.domain.repository.TrackRepository
@@ -21,14 +19,20 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 
 class MediaStoreTrackRepository(
     private val context: Context,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val onlineCovers: StateFlow<Map<String, Any>>
 ) : TrackRepository {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -40,27 +44,36 @@ class MediaStoreTrackRepository(
 
     init {
         scope.launch {
-            combine(allTracks, settingsRepository.settings) { list, settings ->
-                applyFilters(list, settings)
+            combine(
+                flow = allTracks,
+                flow2 = settingsRepository.settings,
+                flow3 = onlineCovers
+            ) { raw, settings, covers ->
+                TrackFilter.mergeCovers(
+                    TrackFilter.applyAndSort(tracks = raw, settings),
+                    settings,
+                    covers
+                )
             }.collect { filtered ->
                 _tracks.value = filtered
             }
         }
 
-        scope.launch {
-            observeChanges().collect {
-                rescan()
-            }
-        }
+        scope.launch { rescan() }
 
         scope.launch {
-            rescan()
+            settingsRepository.settings
+                .map { it.autoRescanOnLaunch }
+                .distinctUntilChanged()
+                .flatMapLatest { enabled ->
+                    if (enabled) observeChanges() else emptyFlow()
+                }
+                .collect { rescan() }
         }
     }
 
     override suspend fun rescan() {
-        val loaded = loadAllTracks()
-        allTracks.value = loaded
+        allTracks.value = loadAllTracks()
     }
 
     private suspend fun loadAllTracks(): List<Track> = withContext(Dispatchers.IO) {
@@ -150,35 +163,6 @@ class MediaStoreTrackRepository(
         }
 
         tracks
-    }
-
-    private fun applyFilters(tracks: List<Track>, settings: AppSettings): List<Track> {
-        val minDurationMs = settings.minTrackDurationSeconds * 1000L
-        val excludedFolders = settings.excludedFolders.map { it.lowercase() }
-
-        val filtered = tracks.filter { track ->
-            if (minDurationMs > 0 && track.durationMs < minDurationMs) return@filter false
-
-            val folderName = track.folderPath?.substringAfterLast('/')?.lowercase() ?: ""
-            if (folderName in excludedFolders) return@filter false
-
-            true
-        }
-
-        return sortTracks(filtered, settings.defaultSortOrder)
-    }
-
-    private fun sortTracks(tracks: List<Track>, order: SortOrder): List<Track> {
-        return when (order) {
-            SortOrder.TITLE_ASC -> tracks.sortedBy { it.title.lowercase() }
-            SortOrder.TITLE_DESC -> tracks.sortedByDescending { it.title.lowercase() }
-            SortOrder.DATE_ADDED_DESC -> tracks.sortedByDescending { it.dateAdded }
-            SortOrder.DATE_ADDED_ASC -> tracks.sortedBy { it.dateAdded }
-            SortOrder.DURATION_ASC -> tracks.sortedBy { it.durationMs }
-            SortOrder.DURATION_DESC -> tracks.sortedByDescending { it.durationMs }
-            SortOrder.ARTIST_ASC -> tracks.sortedBy { it.artist.lowercase() }
-            SortOrder.ALBUM_ASC -> tracks.sortedBy { it.album.lowercase() }
-        }
     }
 
     override suspend fun getTracks(): List<Track> = _tracks.value
