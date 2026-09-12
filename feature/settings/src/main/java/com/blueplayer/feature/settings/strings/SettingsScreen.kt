@@ -27,11 +27,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CleaningServices
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.SettingsSuggest
 import androidx.compose.material.icons.filled.VolumeUp
@@ -43,6 +47,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -70,14 +76,18 @@ import com.blueplayer.core.domain.locale.AppLanguage
 import com.blueplayer.core.domain.locale.Strings
 import com.blueplayer.core.domain.model.AccentColor
 import com.blueplayer.core.domain.model.AudioFocusMode
+import com.blueplayer.core.domain.model.SortOrder
 import com.blueplayer.core.domain.model.ThemeMode
 import com.blueplayer.core.domain.repository.SettingsRepository
+import com.blueplayer.core.player.CoverCache
+import com.blueplayer.core.player.OnlineCoverFetcher
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     viewModelFactory: ViewModelProvider.Factory,
     settingsRepository: SettingsRepository,
+    coverCache: CoverCache,
     onBack: () -> Unit,
     onGithubClick: () -> Unit,
     onEqualizerClick: () -> Unit,
@@ -91,8 +101,11 @@ fun SettingsScreen(
     var expandedInterface by remember { mutableStateOf(true) }
     var expandedSound by remember { mutableStateOf(false) }
     var expandedPlayback by remember { mutableStateOf(false) }
+    var expandedLibrary by remember { mutableStateOf(false) }
     var expandedAdvanced by remember { mutableStateOf(false) }
     var showResetDialog by remember { mutableStateOf(false) }
+    var showAddFolderDialog by remember { mutableStateOf(false) }
+    var folderNameInput by remember { mutableStateOf("") }
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -288,12 +301,167 @@ fun SettingsScreen(
                 Spacer(Modifier.height(12.dp))
 
                 SettingsCard(
+                    icon = Icons.Filled.LibraryMusic,
+                    title = Strings.settingsLibrary(lang),
+                    subtitle = Strings.settingsLibraryDesc(lang),
+                    expanded = expandedLibrary,
+                    onToggle = { expandedLibrary = !expandedLibrary }
+                ) {
+                    Text(Strings.minTrackDuration(lang), style = MaterialTheme.typography.titleSmall)
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        Strings.seconds(lang, state.appSettings.minTrackDurationSeconds),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Slider(
+                        value = state.appSettings.minTrackDurationSeconds.toFloat(),
+                        onValueChange = { viewModel.setMinTrackDuration(it.toInt()) },
+                        valueRange = 0f..120f,
+                        steps = 23
+                    )
+                    Text(
+                        Strings.minTrackDurationDesc(lang),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Spacer(Modifier.height(20.dp))
+                    Text(Strings.excludedFolders(lang), style = MaterialTheme.typography.titleSmall)
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        Strings.excludedFoldersDesc(lang),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(8.dp))
+
+                    state.appSettings.excludedFolders.forEach { folder ->
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 2.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    folder,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                IconButton(
+                                    onClick = { viewModel.removeExcludedFolder(folder) },
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Filled.Close,
+                                        null,
+                                        modifier = Modifier.size(16.dp),
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+
+                    OutlinedButton(
+                        onClick = {
+                            folderNameInput = ""
+                            showAddFolderDialog = true
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Filled.Add, null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(Strings.addFolder(lang))
+                    }
+
+                    Spacer(Modifier.height(20.dp))
+                    SettingToggle(
+                        title = Strings.autoRescan(lang),
+                        checked = state.appSettings.autoRescanOnLaunch,
+                        onChange = { viewModel.setAutoRescan(it) }
+                    )
+                    Text(
+                        Strings.autoRescanDesc(lang),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 4.dp)
+                    )
+
+                    Spacer(Modifier.height(12.dp))
+                    SettingToggle(
+                        title = Strings.onlineCovers(lang),
+                        checked = state.appSettings.onlineCoversEnabled,
+                        onChange = { viewModel.setOnlineCovers(it) }
+                    )
+                    Text(
+                        Strings.onlineCoversDesc(lang),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 4.dp)
+                    )
+
+                    Spacer(Modifier.height(16.dp))
+                    Text(Strings.defaultSort(lang), style = MaterialTheme.typography.titleSmall)
+                    Spacer(Modifier.height(8.dp))
+                    SortOrder.entries.forEach { order ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { viewModel.setDefaultSortOrder(order) }
+                                .padding(vertical = 6.dp, horizontal = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = state.appSettings.defaultSortOrder == order,
+                                onClick = { viewModel.setDefaultSortOrder(order) }
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                Strings.sortOrderName(lang, order),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
+
+                SettingsCard(
                     icon = Icons.Filled.SettingsSuggest,
                     title = Strings.settingsAdvanced(lang),
                     subtitle = Strings.settingsAdvancedDesc(lang),
                     expanded = expandedAdvanced,
                     onToggle = { expandedAdvanced = !expandedAdvanced }
                 ) {
+                    OutlinedButton(
+                        onClick = {
+                            viewModel.rescanLibrary()
+                            Toast.makeText(context, Strings.libraryRescanned(lang), Toast.LENGTH_SHORT).show()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.primary
+                        )
+                    ) {
+                        Icon(Icons.Filled.Refresh, null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(Strings.rescanLibrary(lang))
+                    }
+
+                    Spacer(Modifier.height(12.dp))
+
                     OutlinedButton(
                         onClick = {
                             val cacheDir = context.cacheDir
@@ -314,6 +482,24 @@ fun SettingsScreen(
                     Spacer(Modifier.height(12.dp))
 
                     OutlinedButton(
+                        onClick = {
+                            val fetcher = OnlineCoverFetcher(context, coverCache)
+                            fetcher.clearCache()
+                            Toast.makeText(context, Strings.coverCacheCleared(lang), Toast.LENGTH_SHORT).show()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.primary
+                        )
+                    ) {
+                        Icon(Icons.Filled.CleaningServices, null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(Strings.clearCoverCache(lang))
+                    }
+
+                    Spacer(Modifier.height(12.dp))
+
+                    OutlinedButton(
                         onClick = { showResetDialog = true },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.outlinedButtonColors(
@@ -327,6 +513,36 @@ fun SettingsScreen(
                 }
             }
         }
+    }
+
+    if (showAddFolderDialog) {
+        AlertDialog(
+            onDismissRequest = { showAddFolderDialog = false },
+            title = { Text(Strings.addFolder(lang)) },
+            text = {
+                OutlinedTextField(
+                    value = folderNameInput,
+                    onValueChange = { folderNameInput = it },
+                    label = { Text(Strings.folderName(lang)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = folderNameInput.isNotBlank(),
+                    onClick = {
+                        viewModel.addExcludedFolder(folderNameInput.trim())
+                        showAddFolderDialog = false
+                    }
+                ) { Text(Strings.add(lang)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAddFolderDialog = false }) {
+                    Text(Strings.cancel(lang))
+                }
+            }
+        )
     }
 
     if (showResetDialog) {
@@ -461,10 +677,16 @@ private fun SettingsCard(
                 }
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(title, style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold)
-                    Text(subtitle, style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
                 Icon(
                     Icons.Filled.ArrowDropDown,
