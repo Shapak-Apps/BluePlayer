@@ -8,10 +8,10 @@ import com.blueplayer.core.domain.player.PlayerController
 import com.blueplayer.core.domain.player.PlayerState
 import com.blueplayer.core.domain.repository.TrackRepository
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.launch
 
 sealed interface LibraryUiState {
@@ -36,34 +36,22 @@ class LibraryViewModel(
         )
 
     init {
-        loadTracks()
         viewModelScope.launch {
-            trackRepository.observeChanges().collect {
-                loadTracks()
+            trackRepository.tracks.collect { list ->
+                _uiState.value = LibraryUiState.Success(list)
             }
         }
     }
 
     fun refresh() {
-        loadTracks()
+        viewModelScope.launch {
+            trackRepository.rescan()
+        }
     }
 
     fun play(index: Int) {
         val state = uiState.value as? LibraryUiState.Success ?: return
         playerController.playTracks(state.tracks, index)
-    }
-
-    private fun loadTracks() {
-        viewModelScope.launch {
-            _uiState.value = LibraryUiState.Loading
-
-            try {
-                val tracks = trackRepository.getTracks()
-                _uiState.value = LibraryUiState.Success(tracks)
-            } catch (e: Exception) {
-                _uiState.value = LibraryUiState.Error("Не удалось загрузить музыку")
-            }
-        }
     }
 }
 
