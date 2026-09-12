@@ -43,13 +43,25 @@ class AppContainer(appContext: Context) {
     val settingsRepository: SettingsRepository =
         SharedPreferencesSettingsRepository(appContext)
 
+    val coverCache: CoverCache = CoverCache()
+
     val trackRepository: TrackRepository =
-        MediaStoreTrackRepository(appContext, settingsRepository)
-    val albumRepository: AlbumRepository = MediaStoreAlbumRepository(appContext)
-    val artistRepository: ArtistRepository = MediaStoreArtistRepository(appContext)
-    val folderRepository: FolderRepository = MediaStoreFolderRepository(appContext)
+        MediaStoreTrackRepository(appContext, settingsRepository, coverCache.covers)
+
+    val albumRepository: AlbumRepository =
+        MediaStoreAlbumRepository(appContext, settingsRepository, coverCache.covers)
+
+    val artistRepository: ArtistRepository =
+        MediaStoreArtistRepository(appContext, settingsRepository, coverCache.covers)
+
+    val folderRepository: FolderRepository =
+        MediaStoreFolderRepository(appContext, settingsRepository, coverCache.covers)
+
+    val genreRepository: GenreRepository =
+        MediaStoreGenreRepository(appContext, settingsRepository, coverCache.covers)
 
     val themeRepository: ThemeRepository = SharedPreferencesThemeRepository(appContext)
+
     val languageRepository: LanguageRepository =
         SharedPreferencesLanguageRepository(appContext)
 
@@ -60,14 +72,13 @@ class AppContainer(appContext: Context) {
 
     val playerController: PlayerController = Media3PlayerController(
         context = appContext,
-        serviceComponent = ComponentName(appContext, MusicPlaybackService::class.java)
+        serviceComponent = ComponentName(appContext, MusicPlaybackService::class.java),
+        onlineCovers = coverCache.covers
     )
-    val genreRepository: GenreRepository = MediaStoreGenreRepository(appContext)
+
     val equalizerEngine: EqualizerEngine = EqualizerEngine()
 
     val bookmarksRepository: BookmarksRepository = BookmarksRepositoryImpl(appContext)
-
-    val coverCache: CoverCache = CoverCache()
 
     init {
         CrossfadeMonitor.start(
