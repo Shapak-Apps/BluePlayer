@@ -5,12 +5,15 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.forEachGesture
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -43,6 +46,7 @@ fun WaveformSeekBar(
     currentPositionMs: Long,
     durationMs: Long,
     onSeek: (Float) -> Unit,
+    hapticEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val view = LocalView.current
@@ -72,7 +76,9 @@ fun WaveformSeekBar(
                             drag = f
                             onSeek(f)
                             lastSeekTime = System.currentTimeMillis()
-                            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                            if (hapticEnabled) {
+                                view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                            }
 
                             var pressed = true
                             var currentF = f
@@ -131,6 +137,43 @@ fun WaveformSeekBar(
 
             Text(
                 formatDuration(displayPosition),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                formatDuration(durationMs),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+fun SimpleSeekBar(
+    progress: Float,
+    currentPositionMs: Long,
+    durationMs: Long,
+    onSeek: (Float) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        Slider(
+            value = progress.coerceIn(0f, 1f),
+            onValueChange = { onSeek(it) },
+            valueRange = 0f..1f,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(32.dp)
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                formatDuration(currentPositionMs),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary
             )
