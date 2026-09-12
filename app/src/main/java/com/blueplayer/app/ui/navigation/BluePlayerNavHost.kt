@@ -175,9 +175,11 @@ fun BluePlayerNavHost(
         composable(Destinations.NOW_PLAYING) {
             val nowState by container.playerController.state.collectAsStateWithLifecycle()
             val playbackOptions by container.playerController.options.collectAsStateWithLifecycle()
+            val appSettings by container.settingsRepository.settings.collectAsStateWithLifecycle()
             NowPlayingScreen(
                 state = nowState,
                 options = playbackOptions,
+                settings = appSettings,
                 playerController = container.playerController,
                 favoritesRepository = container.favoritesRepository,
                 playlistsRepository = container.playlistsRepository,
