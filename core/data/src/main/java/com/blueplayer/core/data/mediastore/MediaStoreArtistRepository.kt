@@ -7,12 +7,16 @@ import android.provider.MediaStore
 import com.blueplayer.core.domain.model.Artist
 import com.blueplayer.core.domain.model.Track
 import com.blueplayer.core.domain.repository.ArtistRepository
+import com.blueplayer.core.domain.repository.SettingsRepository
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 import java.io.File
 
 class MediaStoreArtistRepository(
-    private val context: Context
+    private val context: Context,
+    private val settingsRepository: SettingsRepository,
+    private val onlineCovers: StateFlow<Map<String, Any>>
 ) : ArtistRepository {
 
     private val albumArtBaseUri = Uri.parse("content://media/external/audio/albumart")
@@ -183,6 +187,11 @@ class MediaStoreArtistRepository(
             return@withContext emptyList()
         }
 
-        tracks
+        val settings = settingsRepository.settings.value
+        TrackFilter.mergeCovers(
+            TrackFilter.apply(tracks, settings),
+            settings,
+            onlineCovers.value
+        )
     }
 }
