@@ -93,11 +93,13 @@ import com.blueplayer.core.domain.player.RepeatModeUi
 import com.blueplayer.core.domain.repository.BookmarksRepository
 import com.blueplayer.core.domain.repository.FavoritesRepository
 import com.blueplayer.core.domain.repository.PlaylistsRepository
+import com.blueplayer.core.player.CoverCache
 import com.blueplayer.core.player.OnlineCoverFetcher
 import com.blueplayer.core.player.WaveformExtractor
 import com.blueplayer.ui.components.ArtworkPlaceholder
 import com.blueplayer.ui.components.GlideArtwork
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -111,6 +113,7 @@ fun NowPlayingScreen(
     options: PlaybackOptions,
     settings: AppSettings,
     playerController: PlayerController,
+    coverCache: CoverCache,
     favoritesRepository: FavoritesRepository,
     playlistsRepository: PlaylistsRepository,
     bookmarksRepository: BookmarksRepository,
@@ -135,8 +138,21 @@ fun NowPlayingScreen(
     val playlists by playlistsRepository.playlists.collectAsStateWithLifecycle()
     val bookmarks by bookmarksRepository.bookmarks.collectAsStateWithLifecycle()
 
-    val coverFetcher = remember { OnlineCoverFetcher(context) }
-    var coverModel by remember { mutableStateOf<Any?>(null) }
+    val coverFetcher = remember { OnlineCoverFetcher(context, coverCache) }
+
+    // === Обложка: глобальный кэш ===
+    val cachedCovers by coverCache.covers.collectAsStateWithLifecycle()
+    val coverModel: Any? = track?.let { t ->
+        t.artworkUri?.takeIf { it.isNotBlank() } ?: cachedCovers[t.id]
+    }
+
+    // Автоматическая загрузка из iTunes, если локальной обложки нет
+    LaunchedEffect(track?.id, settings.onlineCoversEnabled) {
+        val t = track ?: return@LaunchedEffect
+        if (t.artworkUri.isNullOrBlank() && settings.onlineCoversEnabled) {
+            coverFetcher.getCoverUrl(t.id, t.title, t.artist)
+        }
+    }
 
     var waveform by remember { mutableStateOf(FloatArray(0)) }
     LaunchedEffect(track?.uri) {
@@ -147,17 +163,6 @@ fun NowPlayingScreen(
             } else {
                 FloatArray(0)
             }
-        }
-    }
-
-    LaunchedEffect(track?.id) {
-        val t = track ?: return@LaunchedEffect
-        coverModel = null
-        if (!t.artworkUri.isNullOrBlank()) {
-            coverModel = t.artworkUri
-        } else {
-            val url = coverFetcher.getCoverUrl(t.id, t.title, t.artist)
-            if (url != null) coverModel = url
         }
     }
 
@@ -633,6 +638,17 @@ fun NowPlayingScreen(
                         DropdownMenuItem(
                             text = { Text(Strings.goToAlbum(lang)) },
                             onClick = { menuExpanded = false; onAlbumClick(track.albumId) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(Strings.refreshCover(lang)) },
+                            onClick = {
+                                menuExpanded = false
+                                coverFetcher.clearCacheForTrack(track.id)
+                                scope.launch {
+                                    coverFetcher.getCoverUrl(track.id, track.title, track.artist)
+                                    Toast.makeText(context, Strings.coverRefreshed(lang), Toast.LENGTH_SHORT).show()
+                                }
+                            }
                         )
                         DropdownMenuItem(
                             text = { Text(Strings.share(lang)) },
