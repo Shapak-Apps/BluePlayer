@@ -104,6 +104,53 @@ fun BluePlayerRoot(
             var deleteTarget by remember { mutableStateOf<Playlist?>(null) }
             var showAddToPlaylistSheet by remember { mutableStateOf(false) }
             var homeTab by remember { mutableIntStateOf(2) }
+            var queueRestored by remember { mutableStateOf(false) }
+
+            LaunchedEffect(appSettings.queuePersistence) {
+                if (!appSettings.queuePersistence || queueRestored) return@LaunchedEffect
+                queueRestored = true
+                val saved = container.queueStore.load()
+                val empty = container.playerController.state.value.queue.isEmpty()
+                if (saved != null && saved.tracks.isNotEmpty() && empty) {
+                    container.playerController.playTracks(
+                        saved.tracks,
+                        saved.index.coerceIn(0, saved.tracks.lastIndex)
+                    )
+                    container.playerController.seekTo(saved.positionMs)
+                    if (!saved.wasPlaying) {
+                        container.playerController.togglePlayPause()
+                    }
+                }
+            }
+
+            LaunchedEffect(playerState.queue, playerState.currentIndex, appSettings.queuePersistence) {
+                if (appSettings.queuePersistence && playerState.queue.isNotEmpty()) {
+                    container.queueStore.saveQueue(
+                        playerState.queue,
+                        playerState.currentIndex,
+                        playerState.isPlaying
+                    )
+                }
+            }
+
+            LaunchedEffect(playerState.isPlaying, appSettings.queuePersistence) {
+                if (appSettings.queuePersistence && !playerState.isPlaying) {
+                    val s = container.playerController.state.value
+                    if (s.queue.isNotEmpty()) {
+                        container.queueStore.savePosition(s.positionMs, s.currentIndex)
+                    }
+                }
+            }
+
+            LaunchedEffect(appSettings.queuePersistence) {
+                while (appSettings.queuePersistence) {
+                    delay(3000)
+                    val s = container.playerController.state.value
+                    if (s.isPlaying && s.queue.isNotEmpty()) {
+                        container.queueStore.savePosition(s.positionMs, s.currentIndex)
+                    }
+                }
+            }
 
             LaunchedEffect(startSection) {
                 if (startSection == null) return@LaunchedEffect
