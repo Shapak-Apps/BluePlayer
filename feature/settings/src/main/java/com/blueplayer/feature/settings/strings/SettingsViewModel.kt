@@ -84,6 +84,10 @@ class SettingsViewModel(
         settingsRepository.update { it.copy(hapticFeedback = enabled) }
     }
 
+    fun setLoudnessNormalization(enabled: Boolean) = viewModelScope.launch {
+        settingsRepository.update { it.copy(loudnessNormalization = enabled) }
+    }
+
     fun resetAll() = viewModelScope.launch {
         settingsRepository.resetToDefaults()
     }
