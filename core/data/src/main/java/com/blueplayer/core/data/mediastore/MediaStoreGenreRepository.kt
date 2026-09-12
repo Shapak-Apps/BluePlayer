@@ -7,12 +7,16 @@ import android.provider.MediaStore
 import com.blueplayer.core.domain.model.Genre
 import com.blueplayer.core.domain.model.Track
 import com.blueplayer.core.domain.repository.GenreRepository
+import com.blueplayer.core.domain.repository.SettingsRepository
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 import java.io.File
 
 class MediaStoreGenreRepository(
-    private val context: Context
+    private val context: Context,
+    private val settingsRepository: SettingsRepository,
+    private val onlineCovers: StateFlow<Map<String, Any>>
 ) : GenreRepository {
 
     private val albumArtBaseUri = Uri.parse("content://media/external/audio/albumart")
@@ -34,9 +38,11 @@ class MediaStoreGenreRepository(
                     val id = cursor.getLong(idColumn)
                     val name = cursor.getString(nameColumn) ?: "Unknown"
 
-                    val count = countMembers(id)
-                    if (count > 0) {
-                        genres.add(Genre(id.toString(), name, count))
+                    if (countMembers(id) <= 0) continue
+
+                    val filteredTracks = getTracksForGenre(id.toString())
+                    if (filteredTracks.isNotEmpty()) {
+                        genres.add(Genre(id.toString(), name, filteredTracks.size))
                     }
                 }
             }
@@ -48,6 +54,16 @@ class MediaStoreGenreRepository(
     }
 
     override suspend fun getTracksForGenre(genreId: String): List<Track> = withContext(Dispatchers.IO) {
+        val raw = loadTracksFromMediaStore(genreId)
+        val settings = settingsRepository.settings.value
+        TrackFilter.mergeCovers(
+            TrackFilter.apply(raw, settings),
+            settings,
+            onlineCovers.value
+        )
+    }
+
+    private fun loadTracksFromMediaStore(genreId: String): List<Track> {
         val tracks = mutableListOf<Track>()
 
         val membersUri = Uri.parse(
@@ -108,10 +124,10 @@ class MediaStoreGenreRepository(
                 }
             }
         } catch (e: Exception) {
-            return@withContext emptyList()
+            return emptyList()
         }
 
-        tracks
+        return tracks
     }
 
     private fun countMembers(genreId: Long): Int {
