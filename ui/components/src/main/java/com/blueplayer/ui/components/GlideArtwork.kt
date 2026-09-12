@@ -11,7 +11,8 @@ import com.bumptech.glide.load.engine.DiskCacheStrategy
 @Composable
 fun GlideArtwork(
     model: Any?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onError: () -> Unit
 ) {
     val context = LocalContext.current
     AndroidView(
