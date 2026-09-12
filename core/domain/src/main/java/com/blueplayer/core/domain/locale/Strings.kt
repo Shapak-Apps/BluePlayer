@@ -777,12 +777,6 @@ object Strings {
         AppLanguage.TURKMEN -> "Açylanda awtomatiki skanerle"
     }
 
-    fun autoRescanDesc(lang: AppLanguage) = when (lang) {
-        AppLanguage.RUSSIAN -> "Обновлять библиотеку при каждом запуске"
-        AppLanguage.ENGLISH -> "Refresh library on every launch"
-        AppLanguage.TURKMEN -> "Her açylanda kitaphanany täzeläň"
-    }
-
     fun onlineCovers(lang: AppLanguage) = when (lang) {
         AppLanguage.RUSSIAN -> "Онлайн-обложки"
         AppLanguage.ENGLISH -> "Online covers"
@@ -865,10 +859,15 @@ object Strings {
         AppLanguage.ENGLISH -> "Refresh cover"
         AppLanguage.TURKMEN -> "Oblozhkany täzele"
     }
-
     fun coverRefreshed(lang: AppLanguage) = when (lang) {
         AppLanguage.RUSSIAN -> "Обложка обновлена"
         AppLanguage.ENGLISH -> "Cover refreshed"
         AppLanguage.TURKMEN -> "Oblozhka täzelendi"
+    }
+
+    fun autoRescanDesc(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Автоматически обновлять библиотеку при изменении файлов"
+        AppLanguage.ENGLISH -> "Automatically refresh library when files change"
+        AppLanguage.TURKMEN -> "Faýllar üýtgände kitaphanany awtomatiki täzele"
     }
 }
