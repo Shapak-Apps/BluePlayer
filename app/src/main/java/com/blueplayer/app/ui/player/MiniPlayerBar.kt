@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -40,6 +41,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.blueplayer.app.ui.navigation.Destinations
+import com.blueplayer.core.domain.model.CoverShape
 import com.blueplayer.core.domain.player.PlaybackOptions
 import com.blueplayer.core.domain.player.PlayerController
 import com.blueplayer.core.domain.player.PlayerState
@@ -54,6 +56,7 @@ fun MiniPlayerBar(
     options: PlaybackOptions,
     playerController: PlayerController,
     coverCache: CoverCache,
+    coverShape: CoverShape,
     onExpand: () -> Unit,
     onNavigate: (String) -> Unit,
     onPlusClick: () -> Unit
@@ -70,6 +73,12 @@ fun MiniPlayerBar(
         onlineCover != null && !onlineLoadFailed -> onlineCover
         localCover != null -> localCover
         else -> null
+    }
+
+    val coverClip = when (coverShape) {
+        CoverShape.ROUNDED -> RoundedCornerShape(8.dp)
+        CoverShape.CIRCLE -> CircleShape
+        CoverShape.SQUARE -> RoundedCornerShape(0.dp)
     }
 
     AnimatedVisibility(visible = track != null) {
@@ -100,7 +109,7 @@ fun MiniPlayerBar(
                 androidx.compose.foundation.layout.Box(
                     modifier = Modifier
                         .size(40.dp)
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(coverClip)
                         .background(MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.1f))
                 ) {
                     ArtworkPlaceholder(Modifier.size(40.dp))
