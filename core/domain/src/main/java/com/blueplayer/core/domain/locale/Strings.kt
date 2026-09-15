@@ -1,6 +1,8 @@
 package com.blueplayer.core.domain.locale
 
 import com.blueplayer.core.domain.model.SortOrder
+import com.blueplayer.core.domain.model.CoverShape
+import com.blueplayer.core.domain.model.TextSize
 
 object Strings {
     fun tracks(lang: AppLanguage) = when (lang) {
@@ -864,10 +866,56 @@ object Strings {
         AppLanguage.ENGLISH -> "Cover refreshed"
         AppLanguage.TURKMEN -> "Oblozhka täzelendi"
     }
-
     fun autoRescanDesc(lang: AppLanguage) = when (lang) {
         AppLanguage.RUSSIAN -> "Автоматически обновлять библиотеку при изменении файлов"
         AppLanguage.ENGLISH -> "Automatically refresh library when files change"
         AppLanguage.TURKMEN -> "Faýllar üýtgände kitaphanany awtomatiki täzele"
+    }
+    fun textSize(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Размер текста"
+        AppLanguage.ENGLISH -> "Text size"
+        AppLanguage.TURKMEN -> "Tekst möçberi"
+    }
+
+    fun textSizeName(lang: AppLanguage, size: TextSize) = when (lang) {
+        AppLanguage.RUSSIAN -> when (size) {
+            TextSize.SMALL -> "Маленький"
+            TextSize.NORMAL -> "Обычный"
+            TextSize.LARGE -> "Крупный"
+        }
+        AppLanguage.ENGLISH -> when (size) {
+            TextSize.SMALL -> "Small"
+            TextSize.NORMAL -> "Normal"
+            TextSize.LARGE -> "Large"
+        }
+        AppLanguage.TURKMEN -> when (size) {
+            TextSize.SMALL -> "Kiçi"
+            TextSize.NORMAL -> "Adaty"
+            TextSize.LARGE -> "Uly"
+        }
+    }
+
+    fun coverShape(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Форма обложки"
+        AppLanguage.ENGLISH -> "Cover shape"
+        AppLanguage.TURKMEN -> "Oblozhka şekili"
+    }
+
+    fun coverShapeName(lang: AppLanguage, shape: CoverShape) = when (lang) {
+        AppLanguage.RUSSIAN -> when (shape) {
+            CoverShape.ROUNDED -> "Скруглённая"
+            CoverShape.CIRCLE -> "Круг"
+            CoverShape.SQUARE -> "Квадрат"
+        }
+        AppLanguage.ENGLISH -> when (shape) {
+            CoverShape.ROUNDED -> "Rounded"
+            CoverShape.CIRCLE -> "Circle"
+            CoverShape.SQUARE -> "Square"
+        }
+        AppLanguage.TURKMEN -> when (shape) {
+            CoverShape.ROUNDED -> "Tegeleklen"
+            CoverShape.CIRCLE -> "Togalak"
+            CoverShape.SQUARE -> "Kwadrat"
+        }
     }
 }
