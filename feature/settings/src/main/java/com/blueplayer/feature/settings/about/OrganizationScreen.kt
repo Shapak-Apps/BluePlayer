@@ -93,7 +93,8 @@ fun OrganizationScreen(
     )
 
     fun stagger(start: Float): Float =
-        ((enter.value - start) / 0.5f).coerceIn(0f, 1f)
+        if (start >= 1f) enter.value
+        else ((enter.value - start) / (1f - start)).coerceIn(0f, 1f)
 
     Surface(
         modifier = Modifier.fillMaxSize(),
