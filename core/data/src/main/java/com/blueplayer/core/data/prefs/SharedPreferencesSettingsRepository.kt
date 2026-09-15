@@ -5,7 +5,9 @@ import android.content.SharedPreferences
 import com.blueplayer.core.domain.model.AccentColor
 import com.blueplayer.core.domain.model.AppSettings
 import com.blueplayer.core.domain.model.AudioFocusMode
+import com.blueplayer.core.domain.model.CoverShape
 import com.blueplayer.core.domain.model.SortOrder
+import com.blueplayer.core.domain.model.TextSize
 import com.blueplayer.core.domain.repository.SettingsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,7 +49,13 @@ class SharedPreferencesSettingsRepository(
         onlineCoversEnabled = prefs.getBoolean("online_covers_enabled", true),
         defaultSortOrder = runCatching {
             SortOrder.valueOf(prefs.getString("default_sort_order", "TITLE_ASC") ?: "TITLE_ASC")
-        }.getOrDefault(SortOrder.TITLE_ASC)
+        }.getOrDefault(SortOrder.TITLE_ASC),
+        textSize = runCatching {
+            TextSize.valueOf(prefs.getString("text_size", "NORMAL") ?: "NORMAL")
+        }.getOrDefault(TextSize.NORMAL),
+        coverShape = runCatching {
+            CoverShape.valueOf(prefs.getString("cover_shape", "ROUNDED") ?: "ROUNDED")
+        }.getOrDefault(CoverShape.ROUNDED)
     )
 
     override suspend fun update(update: (AppSettings) -> AppSettings) =
@@ -68,6 +76,8 @@ class SharedPreferencesSettingsRepository(
                 .putBoolean("auto_rescan_on_launch", new.autoRescanOnLaunch)
                 .putBoolean("online_covers_enabled", new.onlineCoversEnabled)
                 .putString("default_sort_order", new.defaultSortOrder.name)
+                .putString("text_size", new.textSize.name)
+                .putString("cover_shape", new.coverShape.name)
                 .apply()
             legacyPrefs.edit()
                 .putBoolean("sound_normalize", new.loudnessNormalization)
