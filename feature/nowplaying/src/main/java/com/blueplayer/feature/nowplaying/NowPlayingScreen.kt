@@ -85,6 +85,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.blueplayer.core.domain.locale.AppLanguage
 import com.blueplayer.core.domain.locale.Strings
 import com.blueplayer.core.domain.model.AppSettings
+import com.blueplayer.core.domain.model.CoverShape
 import com.blueplayer.core.domain.model.Track
 import com.blueplayer.core.domain.player.PlaybackOptions
 import com.blueplayer.core.domain.player.PlayerController
@@ -494,6 +495,12 @@ fun NowPlayingScreen(
     val isFavorite = favorites.any { it.id == track.id }
     val seed = track.id.toLongOrNull() ?: track.title.hashCode().toLong()
 
+    val artworkShape = when (settings.coverShape) {
+        CoverShape.ROUNDED -> RoundedCornerShape(16.dp)
+        CoverShape.CIRCLE -> CircleShape
+        CoverShape.SQUARE -> RoundedCornerShape(0.dp)
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -554,8 +561,8 @@ fun NowPlayingScreen(
                     modifier = Modifier
                         .fillMaxHeight()
                         .aspectRatio(1f, matchHeightConstraintsFirst = true)
-                        .shadow(16.dp, RoundedCornerShape(16.dp)),
-                    shape = RoundedCornerShape(16.dp),
+                        .shadow(16.dp, artworkShape),
+                    shape = artworkShape,
                     color = MaterialTheme.colorScheme.surfaceVariant
                 ) {
                     Box(
