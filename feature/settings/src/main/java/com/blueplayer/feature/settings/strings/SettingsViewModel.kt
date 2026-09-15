@@ -8,7 +8,9 @@ import com.blueplayer.core.domain.locale.LanguageRepository
 import com.blueplayer.core.domain.model.AccentColor
 import com.blueplayer.core.domain.model.AppSettings
 import com.blueplayer.core.domain.model.AudioFocusMode
+import com.blueplayer.core.domain.model.CoverShape
 import com.blueplayer.core.domain.model.SortOrder
+import com.blueplayer.core.domain.model.TextSize
 import com.blueplayer.core.domain.model.ThemeMode
 import com.blueplayer.core.domain.repository.SettingsRepository
 import com.blueplayer.core.domain.repository.ThemeRepository
@@ -116,6 +118,14 @@ class SettingsViewModel(
 
     fun setDefaultSortOrder(order: SortOrder) = viewModelScope.launch {
         settingsRepository.update { it.copy(defaultSortOrder = order) }
+    }
+
+    fun setTextSize(size: TextSize) = viewModelScope.launch {
+        settingsRepository.update { it.copy(textSize = size) }
+    }
+
+    fun setCoverShape(shape: CoverShape) = viewModelScope.launch {
+        settingsRepository.update { it.copy(coverShape = shape) }
     }
 
     fun rescanLibrary() = viewModelScope.launch {
