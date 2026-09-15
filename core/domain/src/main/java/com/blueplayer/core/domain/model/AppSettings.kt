@@ -24,6 +24,14 @@ enum class SortOrder(val displayNameResKey: String) {
     ALBUM_ASC("sortAlbumAsc")
 }
 
+enum class TextSize(val scale: Float) {
+    SMALL(0.9f),
+    NORMAL(1.0f),
+    LARGE(1.15f)
+}
+
+enum class CoverShape { ROUNDED, CIRCLE, SQUARE }
+
 data class AppSettings(
     val dynamicColors: Boolean = false,
     val accentColor: AccentColor = AccentColor.DEFAULT,
@@ -38,5 +46,7 @@ data class AppSettings(
     val excludedFolders: Set<String> = setOf("Ringtones", "Notifications", "Alarms"),
     val autoRescanOnLaunch: Boolean = true,
     val onlineCoversEnabled: Boolean = true,
-    val defaultSortOrder: SortOrder = SortOrder.TITLE_ASC
+    val defaultSortOrder: SortOrder = SortOrder.TITLE_ASC,
+    val textSize: TextSize = TextSize.NORMAL,
+    val coverShape: CoverShape = CoverShape.ROUNDED
 )
