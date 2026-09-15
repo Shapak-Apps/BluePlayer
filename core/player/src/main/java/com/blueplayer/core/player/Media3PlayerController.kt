@@ -5,10 +5,12 @@ import android.content.Context
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import androidx.annotation.OptIn
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.blueplayer.core.domain.model.Track
@@ -25,7 +27,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
 import java.util.concurrent.Executor
 
-@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+@OptIn(UnstableApi::class)
 class Media3PlayerController(
     private val context: Context,
     private val serviceComponent: ComponentName,
@@ -77,7 +79,7 @@ class Media3PlayerController(
     private val progressRunnable = object : Runnable {
         override fun run() {
             updateProgress()
-            mainHandler.postDelayed(this, 500L)
+            mainHandler.postDelayed(this, 1000L)
         }
     }
 
@@ -97,6 +99,7 @@ class Media3PlayerController(
                 mainHandler.post(progressRunnable)
             } else {
                 mainHandler.removeCallbacks(progressRunnable)
+                updateProgress()
             }
         }
 
@@ -117,7 +120,6 @@ class Media3PlayerController(
                     }
                 )
             }
-            updateState()
         }
 
         override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
@@ -145,7 +147,7 @@ class Media3PlayerController(
                             lastCover = cover
                         }
                     }
-                    Thread.sleep(200)
+                    Thread.sleep(800)
                 } catch (_: Exception) {
                 }
             }
@@ -191,7 +193,9 @@ class Media3PlayerController(
 
                         processPendingQueue()
                         updateState()
-                        mainHandler.post(progressRunnable)
+                        if (mediaController.isPlaying) {
+                            mainHandler.post(progressRunnable)
+                        }
                     } catch (e: Exception) {
                         future = null
                     }
@@ -427,27 +431,38 @@ class Media3PlayerController(
         val sessionId = extras?.getInt(AUDIO_SESSION_ID, 0) ?: 0
         if (sessionId != 0) _audioSessionId.value = sessionId
 
-        _state.update {
-            it.copy(
-                isPlaying = mediaController.isPlaying,
-                currentIndex = if (index >= 0) index else it.currentIndex,
+        val isPlaying = mediaController.isPlaying
+        val speed = mediaController.playbackParameters.speed
+        val position = mediaController.currentPosition.takeIf { it >= 0 } ?: 0L
+        val currentIndex = if (index >= 0) index else _state.value.currentIndex
+
+        _state.update { prev ->
+            if (prev.isPlaying == isPlaying &&
+                prev.currentIndex == currentIndex &&
+                prev.currentTrack == currentTrack &&
+                prev.durationMs == durationMs &&
+                prev.positionMs == position &&
+                prev.playbackSpeed == speed
+            ) prev
+            else prev.copy(
+                isPlaying = isPlaying,
+                currentIndex = currentIndex,
                 currentTrack = currentTrack,
                 durationMs = durationMs,
-                positionMs = mediaController.currentPosition.takeIf { it >= 0 } ?: 0L,
-                playbackSpeed = mediaController.playbackParameters.speed
+                positionMs = position,
+                playbackSpeed = speed
             )
         }
     }
 
     private fun updateProgress() {
         val mediaController = controller ?: return
-        _state.update {
-            it.copy(
-                positionMs = mediaController.currentPosition.takeIf { it >= 0 } ?: 0L,
-                durationMs = mediaController.duration.takeIf { it > 0 } ?: it.durationMs,
-                isPlaying = mediaController.isPlaying,
-                playbackSpeed = mediaController.playbackParameters.speed
-            )
+        val position = mediaController.currentPosition.takeIf { it >= 0 } ?: 0L
+        val duration = mediaController.duration.takeIf { it > 0 } ?: _state.value.durationMs
+
+        _state.update { prev ->
+            if (prev.positionMs == position && prev.durationMs == duration) prev
+            else prev.copy(positionMs = position, durationMs = duration)
         }
     }
 }
