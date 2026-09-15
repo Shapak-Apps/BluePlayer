@@ -75,19 +75,14 @@ fun BluePlayerRoot(
     val lang by container.languageRepository.language.collectAsStateWithLifecycle()
     val appSettings by container.settingsRepository.settings.collectAsStateWithLifecycle()
 
-    val darkTheme = when (themeMode) {
-        ThemeMode.SYSTEM -> isSystemInDarkTheme()
-        ThemeMode.LIGHT -> false
-        ThemeMode.DARK -> true
-    }
-
     val seedColor = if (appSettings.accentColor == AccentColor.DEFAULT) null
     else Color(appSettings.accentColor.argb)
 
     val useDynamicColors = appSettings.dynamicColors && seedColor == null
 
-    BluePlayerTheme(
-        darkTheme = darkTheme,
+    AppTheme(
+        themeMode = themeMode,
+        textSize = appSettings.textSize,
         dynamicColor = useDynamicColors,
         seedColor = seedColor
     ) {
@@ -272,7 +267,8 @@ fun BluePlayerRoot(
                                     coverCache = container.coverCache,
                                     onExpand = { navController.navigate(Destinations.NOW_PLAYING) },
                                     onNavigate = { route -> navController.navigate(route) },
-                                    onPlusClick = { showAddToPlaylistSheet = true }
+                                    onPlusClick = { showAddToPlaylistSheet = true },
+                                    coverShape = appSettings.coverShape,
                                 )
                             }
                         }
