@@ -76,7 +76,9 @@ import com.blueplayer.core.domain.locale.AppLanguage
 import com.blueplayer.core.domain.locale.Strings
 import com.blueplayer.core.domain.model.AccentColor
 import com.blueplayer.core.domain.model.AudioFocusMode
+import com.blueplayer.core.domain.model.CoverShape
 import com.blueplayer.core.domain.model.SortOrder
+import com.blueplayer.core.domain.model.TextSize
 import com.blueplayer.core.domain.model.ThemeMode
 import com.blueplayer.core.domain.repository.SettingsRepository
 import com.blueplayer.core.player.CoverCache
@@ -193,6 +195,32 @@ fun SettingsScreen(
                         selected = state.appSettings.accentColor,
                         onSelect = { viewModel.setAccentColor(it) }
                     )
+
+                    Spacer(Modifier.height(20.dp))
+                    Text(Strings.textSize(lang), style = MaterialTheme.typography.titleSmall)
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextSize.entries.forEach { size ->
+                            FilterChip(
+                                selected = state.appSettings.textSize == size,
+                                onClick = { viewModel.setTextSize(size) },
+                                label = { Text(Strings.textSizeName(lang, size)) }
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+                    Text(Strings.coverShape(lang), style = MaterialTheme.typography.titleSmall)
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        CoverShape.entries.forEach { shape ->
+                            FilterChip(
+                                selected = state.appSettings.coverShape == shape,
+                                onClick = { viewModel.setCoverShape(shape) },
+                                label = { Text(Strings.coverShapeName(lang, shape)) }
+                            )
+                        }
+                    }
                 }
 
                 Spacer(Modifier.height(12.dp))
