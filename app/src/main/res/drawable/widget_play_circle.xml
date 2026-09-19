@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Filled accent circle behind the play/pause icon -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <gradient
+        android:angle="270"
+        android:endColor="#2F7BFF"
+        android:startColor="#66B0FF"
+        android:type="linear" />
+</shape>
