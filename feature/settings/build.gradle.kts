@@ -37,6 +37,7 @@ dependencies {
     implementation(libs.compose.material.icons.extended)
 
     implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation("androidx.activity:activity-compose:1.9.2")
     implementation(libs.androidx.lifecycle.viewmodel.compose)
 
     debugImplementation(libs.compose.ui.tooling)
