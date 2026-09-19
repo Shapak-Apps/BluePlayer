@@ -1,8 +1,12 @@
 package com.blueplayer.app.ui
 
 import android.content.Intent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -55,15 +59,8 @@ import com.blueplayer.core.domain.locale.AppLanguage
 import com.blueplayer.core.domain.locale.Strings
 import com.blueplayer.core.domain.model.AccentColor
 import com.blueplayer.core.domain.model.Playlist
-import com.blueplayer.core.domain.model.ThemeMode
-import com.blueplayer.ui.theme.BluePlayerTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -167,6 +164,10 @@ fun BluePlayerRoot(
                     "settings" -> {
                         navController.navigate(Destinations.SETTINGS) { launchSingleTop = true }
                     }
+                    // Deep link used by the home-screen widget tap
+                    "nowplaying" -> {
+                        navController.navigate(Destinations.NOW_PLAYING) { launchSingleTop = true }
+                    }
                 }
             }
 
@@ -253,7 +254,8 @@ fun BluePlayerRoot(
                             val miniPlayerHidden =
                                 currentRoute == Destinations.SETTINGS ||
                                         currentRoute == Destinations.ABOUT ||
-                                        currentRoute == Destinations.ORGANIZATION
+                                        currentRoute == Destinations.ORGANIZATION ||
+                                        currentRoute == Destinations.NOW_PLAYING
 
                             AnimatedVisibility(
                                 visible = !miniPlayerHidden,
@@ -265,10 +267,20 @@ fun BluePlayerRoot(
                                     options = playbackOptions,
                                     playerController = container.playerController,
                                     coverCache = container.coverCache,
+                                    coverShape = appSettings.coverShape,
+                                    lang = lang,
+                                    isFavorite = playerState.currentTrack
+                                        ?.let { t -> favorites.any { it.id == t.id } } == true,
+                                    onToggleFavorite = {
+                                        playerState.currentTrack?.let { t ->
+                                            scope.launch {
+                                                container.favoritesRepository.toggleFavorite(t)
+                                            }
+                                        }
+                                    },
                                     onExpand = { navController.navigate(Destinations.NOW_PLAYING) },
                                     onNavigate = { route -> navController.navigate(route) },
-                                    onPlusClick = { showAddToPlaylistSheet = true },
-                                    coverShape = appSettings.coverShape,
+                                    onPlusClick = { showAddToPlaylistSheet = true }
                                 )
                             }
                         }
@@ -285,6 +297,13 @@ fun BluePlayerRoot(
                             modifier = Modifier.padding(paddingValues),
                             homeTab = homeTab,
                             onHomeTabSelected = { homeTab = it },
+                            // New: pass actions into NowPlaying screen
+                            onToggleFavoriteNow = {
+                                playerState.currentTrack?.let { t ->
+                                    scope.launch { container.favoritesRepository.toggleFavorite(t) }
+                                }
+                            },
+                            onAddToPlaylistNow = { showAddToPlaylistSheet = true }
                         )
                     }
                 }
