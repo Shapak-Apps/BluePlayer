@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 4x2 widget: rounded artwork, track info, prev / play / next,
+     progress bar with live current time (Chronometer) and total time -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:padding="14dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:id="@+id/widget_artwork"
+                android:layout_width="68dp"
+                android:layout_height="68dp"
+                android:scaleType="centerCrop"
+                android:src="@drawable/ic_widget_music" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/widget_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="#FFFFFF"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/widget_artist"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:alpha="0.7"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="#FFFFFF"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+            <ImageView
+                android:id="@+id/widget_prev"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
+                android:layout_marginStart="4dp"
+                android:padding="9dp"
+                android:src="@drawable/ic_widget_prev" />
+
+            <ImageView
+                android:id="@+id/widget_play_pause"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:layout_marginStart="4dp"
+                android:background="@drawable/widget_play_circle"
+                android:padding="12dp"
+                android:src="@drawable/ic_widget_play" />
+
+            <ImageView
+                android:id="@+id/widget_next"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
+                android:layout_marginStart="4dp"
+                android:padding="9dp"
+                android:src="@drawable/ic_widget_next" />
+        </LinearLayout>
+
+        <!-- Live current time (system-ticked) / progress / total time -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <!-- Chronometer ticks every second inside the system server:
+                 no app wakeups, no lag, no jumps -->
+            <Chronometer
+                android:id="@+id/widget_time_current"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#B3FFFFFF"
+                android:textSize="11sp" />
+
+            <ProgressBar
+                android:id="@+id/widget_progress"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="0dp"
+                android:layout_height="3dp"
+                android:layout_marginHorizontal="8dp"
+                android:layout_weight="1"
+                android:max="1000"
+                android:progress="0"
+                android:progressBackgroundTint="#26FFFFFF"
+                android:progressTint="#7FB8FF" />
+
+            <TextView
+                android:id="@+id/widget_time_total"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0:00"
+                android:textColor="#B3FFFFFF"
+                android:textSize="11sp" />
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>
