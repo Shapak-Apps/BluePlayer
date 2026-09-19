@@ -34,10 +34,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
@@ -45,9 +47,11 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.TimerOff
 import androidx.compose.material.icons.filled.Tune
@@ -118,10 +122,16 @@ fun NowPlayingScreen(
     playlistsRepository: PlaylistsRepository,
     bookmarksRepository: BookmarksRepository,
     lang: AppLanguage,
+    isFavorite: Boolean,
     onOpenDrawer: () -> Unit,
     onEqualizerClick: () -> Unit,
     onAlbumClick: (String) -> Unit,
     onNavigateBack: () -> Unit,
+    onToggleFavorite: () -> Unit,
+    onPlusClick: () -> Unit,
+    onPlaylistsClick: () -> Unit,
+    onQueueClick: () -> Unit,
+    onSearchClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val track = state.currentTrack
@@ -492,7 +502,6 @@ fun NowPlayingScreen(
         return
     }
 
-    val isFavorite = favorites.any { it.id == track.id }
     val seed = track.id.toLongOrNull() ?: track.title.hashCode().toLong()
 
     val artworkShape = when (settings.coverShape) {
@@ -506,6 +515,7 @@ fun NowPlayingScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surface)
     ) {
+        // Top bar: drawer + track name/artist (first line) + actions
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -515,8 +525,28 @@ fun NowPlayingScreen(
             IconButton(onClick = onOpenDrawer) {
                 Icon(Icons.Filled.Menu, null)
             }
-            Spacer(Modifier.weight(1f))
-            IconButton(onClick = { scope.launch { favoritesRepository.toggleFavorite(track) } }) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 4.dp)
+            ) {
+                Text(
+                    track.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    track.artist,
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            IconButton(onClick = onToggleFavorite) {
                 Icon(
                     if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                     null,
@@ -544,17 +574,18 @@ fun NowPlayingScreen(
             }
         }
 
+        // Main content: enlarged artwork (MiniPlayerBar is hidden on this screen)
         Column(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp)
+                .padding(horizontal = 12.dp)
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .padding(vertical = 8.dp),
+                    .padding(vertical = 4.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Surface(
@@ -643,12 +674,56 @@ fun NowPlayingScreen(
                             text = { Text(Strings.addToFavorites(lang)) },
                             onClick = {
                                 menuExpanded = false
-                                scope.launch { favoritesRepository.toggleFavorite(track) }
+                                onToggleFavorite()
                             }
                         )
                         DropdownMenuItem(
                             text = { Text(Strings.goToAlbum(lang)) },
                             onClick = { menuExpanded = false; onAlbumClick(track.albumId) }
+                        )
+                        DropdownMenuItem(
+                            leadingIcon = {
+                                Icon(Icons.Filled.Speed, null,
+                                    tint = MaterialTheme.colorScheme.primary)
+                            },
+                            text = { Text("x%.2f".format(state.playbackSpeed)) },
+                            onClick = {
+                                menuExpanded = false
+                                val idx = SPEEDS.indexOfFirst {
+                                    kotlin.math.abs(it - state.playbackSpeed) < 0.01f
+                                }
+                                val next = SPEEDS[(idx + 1) % SPEEDS.size]
+                                playerController.setPlaybackSpeed(next)
+                            }
+                        )
+                        DropdownMenuItem(
+                            leadingIcon = {
+                                Icon(
+                                    if (options.abState > 0) Icons.Filled.RepeatOne
+                                    else Icons.Filled.Repeat,
+                                    null,
+                                    tint = if (options.abState > 0)
+                                        MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            },
+                            text = {
+                                Text(
+                                    when (options.abState) {
+                                        1 -> "A…"
+                                        2 -> "A-B"
+                                        else -> "A-B"
+                                    }
+                                )
+                            },
+                            onClick = {
+                                menuExpanded = false
+                                when (options.abState) {
+                                    0 -> playerController.setABPointA()
+                                    1 -> playerController.setABPointB()
+                                    else -> playerController.clearAB()
+                                }
+                            }
                         )
                         DropdownMenuItem(
                             text = { Text(Strings.refreshCover(lang)) },
@@ -728,6 +803,7 @@ fun NowPlayingScreen(
             Spacer(Modifier.height(12.dp))
         }
 
+        // Transport controls (big play row) + secondary action row
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -785,49 +861,47 @@ fun NowPlayingScreen(
                 }
             }
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(4.dp))
 
+            // Secondary row: same actions as the MiniPlayerBar second row
+            // (hidden on this screen). Navigation is done by the caller
+            // via callbacks, so this module never imports app classes.
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    "x%.2f".format(state.playbackSpeed),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.clickable {
-                        val idx = SPEEDS.indexOfFirst {
-                            kotlin.math.abs(it - state.playbackSpeed) < 0.01f
-                        }
-                        val next = SPEEDS[(idx + 1) % SPEEDS.size]
-                        playerController.setPlaybackSpeed(next)
-                    }
-                )
-
-                Text(
-                    "${state.currentIndex + 1}/${state.queue.size}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onPrimary
-                )
-
-                Text(
-                    when (options.abState) {
-                        1 -> "A…"
-                        2 -> "A-B"
-                        else -> "A-B"
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (options.abState > 0) MaterialTheme.colorScheme.onPrimary
-                    else MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f),
-                    modifier = Modifier.clickable {
-                        when (options.abState) {
-                            0 -> playerController.setABPointA()
-                            1 -> playerController.setABPointB()
-                            else -> playerController.clearAB()
-                        }
-                    }
-                )
+                IconButton(onClick = { playerController.cycleRepeatMode() }) {
+                    Icon(
+                        if (options.repeatMode == RepeatModeUi.ONE)
+                            Icons.Filled.RepeatOne
+                        else
+                            Icons.Filled.Repeat,
+                        null,
+                        tint = if (options.repeatMode == RepeatModeUi.OFF)
+                            MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.5f)
+                        else
+                            MaterialTheme.colorScheme.onPrimary
+                    )
+                }
+                IconButton(onClick = onPlusClick) {
+                    Icon(Icons.Filled.Add, null,
+                        tint = MaterialTheme.colorScheme.onPrimary)
+                }
+                IconButton(onClick = onPlaylistsClick) {
+                    Icon(Icons.Filled.QueueMusic, null,
+                        tint = MaterialTheme.colorScheme.onPrimary)
+                }
+                IconButton(onClick = onQueueClick) {
+                    Icon(Icons.Filled.List, null,
+                        tint = MaterialTheme.colorScheme.onPrimary)
+                }
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick = onSearchClick) {
+                    Icon(Icons.Filled.Search, null,
+                        tint = MaterialTheme.colorScheme.onPrimary)
+                }
             }
         }
     }
