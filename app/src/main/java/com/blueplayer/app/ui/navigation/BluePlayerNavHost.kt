@@ -54,6 +54,8 @@ fun BluePlayerNavHost(
     modifier: Modifier = Modifier,
     homeTab: Int,
     onHomeTabSelected: (Int) -> Unit,
+    onToggleFavoriteNow: () -> Unit,
+    onAddToPlaylistNow: () -> Unit,
 ) {
     val libraryVmFactory = remember(container) {
         LibraryViewModelFactory(container.trackRepository, container.playerController)
@@ -177,6 +179,7 @@ fun BluePlayerNavHost(
             val nowState by container.playerController.state.collectAsStateWithLifecycle()
             val playbackOptions by container.playerController.options.collectAsStateWithLifecycle()
             val appSettings by container.settingsRepository.settings.collectAsStateWithLifecycle()
+            val nowFavorites by container.favoritesRepository.favorites.collectAsStateWithLifecycle()
             NowPlayingScreen(
                 state = nowState,
                 options = playbackOptions,
@@ -187,10 +190,17 @@ fun BluePlayerNavHost(
                 playlistsRepository = container.playlistsRepository,
                 bookmarksRepository = container.bookmarksRepository,
                 lang = lang,
+                isFavorite = nowState.currentTrack
+                    ?.let { t -> nowFavorites.any { it.id == t.id } } == true,
                 onOpenDrawer = onOpenDrawer,
                 onEqualizerClick = onEqualizerClick,
-                onAlbumClick = { navController.navigate(route = Destinations.albumDetail(albumId = it)) },
-                onNavigateBack = { navController.popBackStack() }
+                onAlbumClick = { navController.navigate(Destinations.albumDetail(it)) },
+                onNavigateBack = { navController.popBackStack() },
+                onToggleFavorite = onToggleFavoriteNow,
+                onPlusClick = onAddToPlaylistNow,
+                onPlaylistsClick = { navController.navigate(Destinations.PLAYLISTS) },
+                onQueueClick = { navController.navigate(Destinations.QUEUE) },
+                onSearchClick = { navController.navigate(Destinations.SEARCH) }
             )
         }
         composable(Destinations.SETTINGS) {
