@@ -20,11 +20,17 @@ import androidx.media3.session.CommandButton
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import androidx.media3.session.SessionCommand
-import androidx.media3.session.SessionCommands
 import androidx.media3.session.SessionResult
 import com.blueplayer.app.audio.NativeBassProcessor
+import com.blueplayer.app.widget.WidgetUpdater
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 class MusicPlaybackService : MediaSessionService() {
 
@@ -46,9 +52,17 @@ class MusicPlaybackService : MediaSessionService() {
     private var mediaSession: MediaSession? = null
     private var player: ExoPlayer? = null
 
+    // Scope for widget repaint coroutines; cancelled in onDestroy
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
+    private val container by lazy {
+        (application as BluePlayerApplication).container
+    }
+
     private val sessionListener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             publishAudioSessionId()
+            WidgetUpdater.updateFromService(this@MusicPlaybackService, container, player)
         }
 
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
@@ -61,6 +75,15 @@ class MusicPlaybackService : MediaSessionService() {
             ) {
                 saveCurrentSession()
             }
+            WidgetUpdater.updateFromService(this@MusicPlaybackService, container, player)
+        }
+
+        override fun onPositionDiscontinuity(
+            oldPosition: Player.PositionInfo,
+            newPosition: Player.PositionInfo,
+            reason: Int
+        ) {
+            WidgetUpdater.updateFromService(this@MusicPlaybackService, container, player)
         }
 
         override fun onRepeatModeChanged(repeatMode: Int) {
@@ -152,6 +175,30 @@ class MusicPlaybackService : MediaSessionService() {
         exoPlayer.addListener(sessionListener)
         mediaSession?.setCustomLayout(buildRepeatLayout())
         publishAudioSessionId()
+
+        // Repaint the widget whenever an online cover arrives for the playing track
+        serviceScope.launch {
+            var lastCover: String? = null
+            container.coverCache.covers.collect { covers ->
+                val mediaId = player?.currentMediaItem?.mediaId
+                val cover = mediaId?.let { covers[it] as? String }
+                if (cover != null && cover != lastCover) {
+                    lastCover = cover
+                    WidgetUpdater.updateFromService(this@MusicPlaybackService, container, player)
+                }
+            }
+        }
+
+        // Slow ticker: keeps the widget progress bar alive while playing
+        serviceScope.launch {
+            while (true) {
+                delay(10_000)
+                val p = player
+                if (p != null && p.isPlaying) {
+                    WidgetUpdater.updateProgressOnly(this@MusicPlaybackService, container, p)
+                }
+            }
+        }
 
         if (exoPlayer.mediaItemCount == 0) {
             restoreLastSession(exoPlayer)
@@ -261,6 +308,8 @@ class MusicPlaybackService : MediaSessionService() {
 
     override fun onDestroy() {
         saveCurrentSession()
+        serviceScope.cancel()
+        WidgetUpdater.showEmpty(this)
         player?.let { p ->
             p.removeListener(sessionListener)
             p.release()
