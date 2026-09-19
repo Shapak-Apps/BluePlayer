@@ -918,4 +918,47 @@ object Strings {
             CoverShape.SQUARE -> "Kwadrat"
         }
     }
+    fun exportSettings(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Экспорт настроек"
+        AppLanguage.ENGLISH -> "Export settings"
+        AppLanguage.TURKMEN -> "Sazlamalary eksport et"
+    }
+
+    fun importSettings(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Импорт настроек"
+        AppLanguage.ENGLISH -> "Import settings"
+        AppLanguage.TURKMEN -> "Sazlamalary import et"
+    }
+
+    fun settingsExported(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Настройки экспортированы"
+        AppLanguage.ENGLISH -> "Settings exported"
+        AppLanguage.TURKMEN -> "Sazlamalar eksport edildi"
+    }
+
+    fun settingsImported(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Настройки импортированы"
+        AppLanguage.ENGLISH -> "Settings imported"
+        AppLanguage.TURKMEN -> "Sazlamalar import edildi"
+    }
+
+    fun settingsImportFailed(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Не удалось прочитать файл резервной копии"
+        AppLanguage.ENGLISH -> "Could not read the backup file"
+        AppLanguage.TURKMEN -> "Ätiýaçlyk faýly okamak başartmady"
+    }
+
+    fun importConfirmTitle(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Импортировать настройки?"
+        AppLanguage.ENGLISH -> "Import settings?"
+        AppLanguage.TURKMEN -> "Sazlamalary import etmelimi?"
+    }
+
+    fun importConfirmText(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Все текущие настройки, тема и язык будут заменены значениями из резервной копии."
+        AppLanguage.ENGLISH -> "All current settings, theme and language will be replaced by the backup values."
+        AppLanguage.TURKMEN -> "Häzirki sazlamalar, tema we dil ätiýaçlyk nusgasy bilen çalşylar."
+    }
+
+
 }
