@@ -1,6 +1,8 @@
 package com.blueplayer.feature.settings
 
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -32,12 +34,14 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.SettingsSuggest
+import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
@@ -72,6 +76,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.blueplayer.core.domain.backup.SettingsBackup
+import com.blueplayer.core.domain.backup.SettingsBackupData
 import com.blueplayer.core.domain.locale.AppLanguage
 import com.blueplayer.core.domain.locale.Strings
 import com.blueplayer.core.domain.model.AccentColor
@@ -108,6 +114,43 @@ fun SettingsScreen(
     var showResetDialog by remember { mutableStateOf(false) }
     var showAddFolderDialog by remember { mutableStateOf(false) }
     var folderNameInput by remember { mutableStateOf("") }
+    var pendingImport by remember { mutableStateOf<SettingsBackupData?>(null) }
+
+    // SAF launcher: creates a new JSON document and writes the backup into it
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        val json = SettingsBackup.toJson(viewModel.exportData())
+        val ok = runCatching {
+            context.contentResolver.openOutputStream(uri)?.use { stream ->
+                stream.write(json.toByteArray(Charsets.UTF_8))
+            } != null
+        }.getOrDefault(false)
+        Toast.makeText(
+            context,
+            if (ok) Strings.settingsExported(lang) else Strings.settingsImportFailed(lang),
+            Toast.LENGTH_SHORT
+        ).show()
+    }
+
+    // SAF launcher: opens an existing JSON document and parses it
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        val raw = runCatching {
+            context.contentResolver.openInputStream(uri)?.use { stream ->
+                stream.readBytes().toString(Charsets.UTF_8)
+            }
+        }.getOrNull()
+        val data = raw?.let { SettingsBackup.fromJson(it) }
+        if (data == null) {
+            Toast.makeText(context, Strings.settingsImportFailed(lang), Toast.LENGTH_SHORT).show()
+        } else {
+            pendingImport = data
+        }
+    }
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -155,6 +198,11 @@ fun SettingsScreen(
                             selected = state.themeMode == ThemeMode.DARK,
                             onClick = { viewModel.setThemeMode(ThemeMode.DARK) },
                             label = { Text(Strings.themeDark(lang)) }
+                        )
+                        FilterChip(
+                            selected = state.themeMode == ThemeMode.AMOLED,
+                            onClick = { viewModel.setThemeMode(ThemeMode.AMOLED) },
+                            label = { Text("AMOLED") }
                         )
                     }
 
@@ -527,6 +575,36 @@ fun SettingsScreen(
 
                     Spacer(Modifier.height(12.dp))
 
+                    // Writes the full settings snapshot into a user-picked JSON file
+                    OutlinedButton(
+                        onClick = { exportLauncher.launch("blueplayer-settings.json") },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.primary
+                        )
+                    ) {
+                        Icon(Icons.Filled.Upload, null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(Strings.exportSettings(lang))
+                    }
+
+                    Spacer(Modifier.height(12.dp))
+
+                    // Opens a JSON backup file; applied only after confirmation
+                    OutlinedButton(
+                        onClick = { importLauncher.launch(arrayOf("application/json", "*/*")) },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.primary
+                        )
+                    ) {
+                        Icon(Icons.Filled.Download, null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(Strings.importSettings(lang))
+                    }
+
+                    Spacer(Modifier.height(12.dp))
+
                     OutlinedButton(
                         onClick = { showResetDialog = true },
                         modifier = Modifier.fillMaxWidth(),
@@ -567,6 +645,27 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showAddFolderDialog = false }) {
+                    Text(Strings.cancel(lang))
+                }
+            }
+        )
+    }
+
+    // Confirmation step before a backup overwrites current preferences
+    pendingImport?.let { data ->
+        AlertDialog(
+            onDismissRequest = { pendingImport = null },
+            title = { Text(Strings.importConfirmTitle(lang)) },
+            text = { Text(Strings.importConfirmText(lang)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.applyBackup(data)
+                    pendingImport = null
+                    Toast.makeText(context, Strings.settingsImported(lang), Toast.LENGTH_SHORT).show()
+                }) { Text(Strings.importSettings(lang)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingImport = null }) {
                     Text(Strings.cancel(lang))
                 }
             }
