@@ -1,8 +1,11 @@
 package com.blueplayer.app.ui.player
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,6 +17,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Equalizer
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
@@ -22,8 +28,11 @@ import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -37,10 +46,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.blueplayer.app.ui.navigation.Destinations
+import com.blueplayer.core.domain.locale.AppLanguage
+import com.blueplayer.core.domain.locale.Strings
 import com.blueplayer.core.domain.model.CoverShape
 import com.blueplayer.core.domain.player.PlaybackOptions
 import com.blueplayer.core.domain.player.PlayerController
@@ -57,12 +69,18 @@ fun MiniPlayerBar(
     playerController: PlayerController,
     coverCache: CoverCache,
     coverShape: CoverShape,
+    lang: AppLanguage,
+    isFavorite: Boolean,
+    onToggleFavorite: () -> Unit,
     onExpand: () -> Unit,
     onNavigate: (String) -> Unit,
     onPlusClick: () -> Unit
 ) {
     val track = state.currentTrack
+    val context = LocalContext.current
     val cachedCovers by coverCache.covers.collectAsStateWithLifecycle()
+
+    var menuExpanded by remember { mutableStateOf(false) }
 
     val onlineCover = track?.let { t -> cachedCovers[t.id] as? String }
     val localCover = track?.artworkUri?.takeIf { it.isNotBlank() }
@@ -106,7 +124,7 @@ fun MiniPlayerBar(
                     .padding(horizontal = 8.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                androidx.compose.foundation.layout.Box(
+                Box(
                     modifier = Modifier
                         .size(40.dp)
                         .clip(coverClip)
@@ -191,9 +209,90 @@ fun MiniPlayerBar(
                     Icon(Icons.Filled.Search, null,
                         tint = MaterialTheme.colorScheme.onPrimary)
                 }
-                IconButton(onClick = onExpand) {
-                    Icon(Icons.Filled.MoreVert, null,
-                        tint = MaterialTheme.colorScheme.onPrimary)
+                // Three dots: real actions menu instead of plain expand
+                Box {
+                    IconButton(onClick = { menuExpanded = true }) {
+                        Icon(Icons.Filled.MoreVert, null,
+                            tint = MaterialTheme.colorScheme.onPrimary)
+                    }
+                    DropdownMenu(
+                        expanded = menuExpanded,
+                        onDismissRequest = { menuExpanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            leadingIcon = {
+                                Icon(
+                                    if (isFavorite) Icons.Filled.Favorite
+                                    else Icons.Filled.FavoriteBorder,
+                                    null,
+                                    tint = if (isFavorite) MaterialTheme.colorScheme.error
+                                    else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            },
+                            text = {
+                                Text(
+                                    if (isFavorite) Strings.removeFromFavorites(lang)
+                                    else Strings.addToFavorites(lang)
+                                )
+                            },
+                            onClick = {
+                                menuExpanded = false
+                                onToggleFavorite()
+                            }
+                        )
+                        DropdownMenuItem(
+                            leadingIcon = {
+                                Icon(Icons.Filled.Add, null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            },
+                            text = { Text(Strings.sendToPlaylists(lang)) },
+                            onClick = {
+                                menuExpanded = false
+                                onPlusClick()
+                            }
+                        )
+                        DropdownMenuItem(
+                            leadingIcon = {
+                                Icon(Icons.Filled.Equalizer, null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            },
+                            text = { Text(Strings.equalizer(lang)) },
+                            onClick = {
+                                menuExpanded = false
+                                onNavigate(Destinations.EQUALIZER)
+                            }
+                        )
+                        DropdownMenuItem(
+                            leadingIcon = {
+                                Icon(Icons.Filled.Share, null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            },
+                            text = { Text(Strings.share(lang)) },
+                            onClick = {
+                                menuExpanded = false
+                                val t = state.currentTrack ?: return@DropdownMenuItem
+                                val intent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "audio/*"
+                                    putExtra(Intent.EXTRA_STREAM, Uri.parse(t.uri))
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
+                                context.startActivity(
+                                    Intent.createChooser(intent, t.title)
+                                )
+                            }
+                        )
+                        DropdownMenuItem(
+                            leadingIcon = {
+                                Icon(Icons.Filled.MoreVert, null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            },
+                            text = { Text(Strings.nowPlaying(lang)) },
+                            onClick = {
+                                menuExpanded = false
+                                onExpand()
+                            }
+                        )
+                    }
                 }
             }
         }
