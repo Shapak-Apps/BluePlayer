@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
 import java.util.concurrent.Executor
+import kotlinx.coroutines.delay
 
 @OptIn(UnstableApi::class)
 class Media3PlayerController(
@@ -217,6 +218,21 @@ class Media3PlayerController(
             future = null
         } catch (e: Exception) {
         }
+    }
+
+    /**
+     * Connects to the playback service and waits until the underlying
+     * MediaController is actually ready. Used by the home-screen widget
+     * so button clicks work even right after a cold start.
+     */
+    suspend fun connectAndEnsure(timeoutMs: Long = 4000): Boolean {
+        connect()
+        val deadline = System.currentTimeMillis() + timeoutMs
+        while (System.currentTimeMillis() < deadline) {
+            if (controller != null) return true
+            delay(100)
+        }
+        return controller != null
     }
 
     private fun updateCurrentItemArtwork(onlineCover: String) {
