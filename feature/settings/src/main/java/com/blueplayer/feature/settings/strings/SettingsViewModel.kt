@@ -3,6 +3,7 @@ package com.blueplayer.feature.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.blueplayer.core.domain.backup.SettingsBackupData
 import com.blueplayer.core.domain.locale.AppLanguage
 import com.blueplayer.core.domain.locale.LanguageRepository
 import com.blueplayer.core.domain.model.AccentColor
@@ -126,6 +127,22 @@ class SettingsViewModel(
 
     fun setCoverShape(shape: CoverShape) = viewModelScope.launch {
         settingsRepository.update { it.copy(coverShape = shape) }
+    }
+
+    /** Builds a snapshot of everything the backup file should contain. */
+    fun exportData(): SettingsBackupData = SettingsBackupData(
+        settings = _state.value.appSettings,
+        themeMode = _state.value.themeMode,
+        language = _state.value.language
+    )
+
+    /** Applies a restored backup: theme, language and all app settings. */
+    fun applyBackup(data: SettingsBackupData) {
+        viewModelScope.launch {
+            themeRepository.setThemeMode(data.themeMode)
+            languageRepository.setLanguage(data.language)
+            settingsRepository.update { data.settings }
+        }
     }
 
     fun rescanLibrary() = viewModelScope.launch {
