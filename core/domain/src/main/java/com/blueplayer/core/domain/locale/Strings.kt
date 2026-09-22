@@ -500,9 +500,9 @@ object Strings {
         AppLanguage.TURKMEN -> "Android bu faýly pozmaga rugsat bermeýär"
     }
     fun aboutDescription(lang: AppLanguage) = when (lang) {
-        AppLanguage.RUSSIAN -> "Современный музыкальный плеер для Android с нативным C++ бас-движком и Material 3 дизайном."
-        AppLanguage.ENGLISH -> "A modern music player for Android with a native C++ bass engine and Material 3 design."
-        AppLanguage.TURKMEN -> "Android üçin C++ bas dwigately we Material 3 dizaýnly häzirki zaman aýdym pleýeri."
+        AppLanguage.RUSSIAN -> "Красивый музыкальный плеер с глубоким басом и удобным управлением. Слушайте любимые треки с удовольствием."
+        AppLanguage.ENGLISH -> "A beautiful music player with deep bass and smooth controls. Enjoy your favourite tracks the way they were meant to be heard."
+        AppLanguage.TURKMEN -> "Owadan aýdym pleýeri, güýçli bas we amatly dolandyryş bilen. Söýgüli aýdymlaryňyzy lezzet bilen diňläň."
     }
 
     fun aboutFeatures(lang: AppLanguage) = when (lang) {
@@ -530,9 +530,9 @@ object Strings {
     }
 
     fun madeWithLove(lang: AppLanguage) = when (lang) {
-        AppLanguage.RUSSIAN -> "Сделано с любовью в Туркменистане"
-        AppLanguage.ENGLISH -> "Made with love in Turkmenistan"
-        AppLanguage.TURKMEN -> "Türkmenistanda söýgi bilen ýasaldy"
+        AppLanguage.RUSSIAN -> "Приложение разработано для вас"
+        AppLanguage.ENGLISH -> "Application developed for you"
+        AppLanguage.TURKMEN -> "Programma siziň üçin işlenip düzüldi"
     }
 
     fun settingsPlayback(lang: AppLanguage) = when (lang) {
@@ -960,5 +960,39 @@ object Strings {
         AppLanguage.TURKMEN -> "Häzirki sazlamalar, tema we dil ätiýaçlyk nusgasy bilen çalşylar."
     }
 
+    fun storageAccessTitle(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Нужен доступ к файлам"
+        AppLanguage.ENGLISH -> "File access required"
+        AppLanguage.TURKMEN -> "Faýl elýeterliligi gerek"
+    }
 
+    fun storageAccessText(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Разрешите управление всеми файлами, чтобы удалять треки без лишних диалогов."
+        AppLanguage.ENGLISH -> "Allow all-files access to delete tracks without extra consent dialogs."
+        AppLanguage.TURKMEN -> "Artykmaç dialoglarsyz trekleri pozmak üçin ähli faýllara elýeterliligi beriň."
+    }
+
+    fun storageAccessGrant(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Разрешить"
+        AppLanguage.ENGLISH -> "Grant"
+        AppLanguage.TURKMEN -> "Bermek"
+    }
+
+    fun storageAccessLater(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "Позже"
+        AppLanguage.ENGLISH -> "Later"
+        AppLanguage.TURKMEN -> "Soňra"
+    }
+
+    fun themeAmoled(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "AMOLED"
+        AppLanguage.ENGLISH -> "AMOLED"
+        AppLanguage.TURKMEN -> "AMOLED"
+    }
+
+    fun changelog(lang: AppLanguage) = when (lang) {
+        AppLanguage.RUSSIAN -> "История изменений"
+        AppLanguage.ENGLISH -> "Changelog"
+        AppLanguage.TURKMEN -> "Üýtgeşmeler taryhy"
+    }
 }

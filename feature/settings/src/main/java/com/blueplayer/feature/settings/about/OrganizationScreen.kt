@@ -32,6 +32,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.LocationCity
@@ -294,10 +295,10 @@ private fun OrgAuthorCard(
                 )
                 Spacer(Modifier.width(6.dp))
                 Icon(
-                    Icons.Filled.OpenInNew,
+                    Icons.AutoMirrored.Filled.OpenInNew,
                     null,
-                    tint = tint.copy(alpha = 0.8f),
-                    modifier = Modifier.size(14.dp)
+                    tint = Color.White.copy(alpha = 0.8f),
+                    modifier = Modifier.size(16.dp)
                 )
             }
         }

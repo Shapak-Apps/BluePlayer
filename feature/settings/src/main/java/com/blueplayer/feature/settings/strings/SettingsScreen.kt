@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -42,7 +44,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.SettingsSuggest
 import androidx.compose.material.icons.filled.Upload
-import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -90,7 +92,7 @@ import com.blueplayer.core.domain.repository.SettingsRepository
 import com.blueplayer.core.player.CoverCache
 import com.blueplayer.core.player.OnlineCoverFetcher
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(
     viewModelFactory: ViewModelProvider.Factory,
@@ -183,7 +185,11 @@ fun SettingsScreen(
                 ) {
                     Text(Strings.theme(lang), style = MaterialTheme.typography.titleSmall)
                     Spacer(Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         FilterChip(
                             selected = state.themeMode == ThemeMode.SYSTEM,
                             onClick = { viewModel.setThemeMode(ThemeMode.SYSTEM) },
@@ -202,14 +208,18 @@ fun SettingsScreen(
                         FilterChip(
                             selected = state.themeMode == ThemeMode.AMOLED,
                             onClick = { viewModel.setThemeMode(ThemeMode.AMOLED) },
-                            label = { Text("AMOLED") }
+                            label = { Text(Strings.themeAmoled(lang)) }
                         )
                     }
 
                     Spacer(Modifier.height(16.dp))
                     Text(Strings.language(lang), style = MaterialTheme.typography.titleSmall)
                     Spacer(Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         AppLanguage.entries.forEach { language ->
                             FilterChip(
                                 selected = state.language == language,
@@ -247,7 +257,11 @@ fun SettingsScreen(
                     Spacer(Modifier.height(20.dp))
                     Text(Strings.textSize(lang), style = MaterialTheme.typography.titleSmall)
                     Spacer(Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         TextSize.entries.forEach { size ->
                             FilterChip(
                                 selected = state.appSettings.textSize == size,
@@ -260,7 +274,11 @@ fun SettingsScreen(
                     Spacer(Modifier.height(16.dp))
                     Text(Strings.coverShape(lang), style = MaterialTheme.typography.titleSmall)
                     Spacer(Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         CoverShape.entries.forEach { shape ->
                             FilterChip(
                                 selected = state.appSettings.coverShape == shape,
@@ -274,7 +292,7 @@ fun SettingsScreen(
                 Spacer(Modifier.height(12.dp))
 
                 SettingsCard(
-                    icon = Icons.Filled.VolumeUp,
+                    icon = Icons.AutoMirrored.Filled.VolumeUp,
                     title = Strings.settingsSound(lang),
                     subtitle = Strings.settingsSoundDesc(lang),
                     expanded = expandedSound,
@@ -327,7 +345,11 @@ fun SettingsScreen(
                     Spacer(Modifier.height(20.dp))
                     Text(Strings.audioFocus(lang), style = MaterialTheme.typography.titleSmall)
                     Spacer(Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         FilterChip(
                             selected = state.appSettings.audioFocusMode == AudioFocusMode.PAUSE,
                             onClick = { viewModel.setAudioFocus(AudioFocusMode.PAUSE) },
