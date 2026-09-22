@@ -21,7 +21,16 @@ class MediaStoreGenreRepository(
 
     private val albumArtBaseUri = Uri.parse("content://media/external/audio/albumart")
 
+    /**
+     * Genre list with track counts.
+     *
+     * Optimization: ONE members query per genre instead of two
+     * (the old countMembers() pre-query is gone). Counts are derived
+     * from the filtered track list, and cover merging is skipped here
+     * because the list screen only needs names + counts.
+     */
     override suspend fun getGenres(): List<Genre> = withContext(Dispatchers.IO) {
+        val settings = settingsRepository.settings.value
         val genres = mutableListOf<Genre>()
 
         try {
@@ -38,11 +47,13 @@ class MediaStoreGenreRepository(
                     val id = cursor.getLong(idColumn)
                     val name = cursor.getString(nameColumn) ?: "Unknown"
 
-                    if (countMembers(id) <= 0) continue
-
-                    val filteredTracks = getTracksForGenre(id.toString())
-                    if (filteredTracks.isNotEmpty()) {
-                        genres.add(Genre(id.toString(), name, filteredTracks.size))
+                    // Single query: load members, apply user filters, count.
+                    val filtered = TrackFilter.apply(
+                        loadTracksFromMediaStore(id.toString()),
+                        settings
+                    )
+                    if (filtered.isNotEmpty()) {
+                        genres.add(Genre(id.toString(), name, filtered.size))
                     }
                 }
             }
@@ -53,6 +64,10 @@ class MediaStoreGenreRepository(
         genres
     }
 
+    /**
+     * Full track list for a genre detail screen.
+     * Covers ARE merged here because the detail UI shows artwork.
+     */
     override suspend fun getTracksForGenre(genreId: String): List<Track> = withContext(Dispatchers.IO) {
         val raw = loadTracksFromMediaStore(genreId)
         val settings = settingsRepository.settings.value
@@ -128,20 +143,5 @@ class MediaStoreGenreRepository(
         }
 
         return tracks
-    }
-
-    private fun countMembers(genreId: Long): Int {
-        val membersUri = Uri.parse(
-            "${MediaStore.Audio.Genres.EXTERNAL_CONTENT_URI}/$genreId/members"
-        )
-        return try {
-            context.contentResolver.query(
-                membersUri,
-                arrayOf(MediaStore.Audio.Media._ID),
-                null, null, null
-            )?.use { it.count } ?: 0
-        } catch (e: Exception) {
-            0
-        }
     }
 }
