@@ -17,6 +17,8 @@ object Destinations {
     const val ORGANIZATION = "organization"
     const val NOW_PLAYING = "now_playing"
 
+    const val CHANGELOG = "changelog"
+
     const val ALBUM_DETAIL = "album_detail/{albumId}"
     const val ARTIST_DETAIL = "artist_detail/{artistId}"
     const val PLAYLIST_DETAIL = "playlist_detail/{playlistId}"

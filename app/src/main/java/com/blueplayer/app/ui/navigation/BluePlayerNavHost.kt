@@ -41,6 +41,7 @@ import com.blueplayer.feature.settings.SettingsScreen
 import com.blueplayer.feature.settings.SettingsViewModelFactory
 import com.blueplayer.feature.settings.about.AboutScreen
 import com.blueplayer.feature.settings.about.OrganizationScreen
+import com.blueplayer.feature.settings.changelog.ChangelogScreen
 import com.blueplayer.feature.settings.equalizer.EqualizerScreen
 
 @Composable
@@ -114,6 +115,7 @@ fun BluePlayerNavHost(
             LibraryScreen(
                 viewModelFactory = libraryVmFactory,
                 favoritesRepository = container.favoritesRepository,
+                trackDeleter = container.trackDeleter,
                 lang = lang
             )
         }
@@ -175,6 +177,12 @@ fun BluePlayerNavHost(
                 lang = lang
             )
         }
+        composable(Destinations.CHANGELOG) {
+            ChangelogScreen(
+                lang = lang,
+                onBack = { navController.popBackStack() }
+            )
+        }
         composable(Destinations.NOW_PLAYING) {
             val nowState by container.playerController.state.collectAsStateWithLifecycle()
             val playbackOptions by container.playerController.options.collectAsStateWithLifecycle()
@@ -189,6 +197,7 @@ fun BluePlayerNavHost(
                 favoritesRepository = container.favoritesRepository,
                 playlistsRepository = container.playlistsRepository,
                 bookmarksRepository = container.bookmarksRepository,
+                trackDeleter = container.trackDeleter,
                 lang = lang,
                 isFavorite = nowState.currentTrack
                     ?.let { t -> nowFavorites.any { it.id == t.id } } == true,

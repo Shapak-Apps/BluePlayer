@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LibraryMusic
@@ -67,6 +68,7 @@ fun AppDrawerContent(
     onNavigate: (String) -> Unit,
     onSettingsClick: () -> Unit,
     onAboutClick: () -> Unit,
+    onChangelogClick: () -> Unit,
     onExitClick: () -> Unit,
     onCreatePlaylistClick: () -> Unit,
     onDeletePlaylist: (Playlist) -> Unit
@@ -263,6 +265,13 @@ fun AppDrawerContent(
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f)
             )
+            IconButton(onClick = onChangelogClick) {
+                Icon(
+                    Icons.Filled.History,
+                    null,
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
+            }
             IconButton(onClick = onSettingsClick) {
                 Icon(
                     Icons.Filled.Settings,

@@ -32,6 +32,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -45,6 +46,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
@@ -59,6 +63,7 @@ import com.blueplayer.core.domain.locale.AppLanguage
 import com.blueplayer.core.domain.locale.Strings
 import com.blueplayer.core.domain.model.AccentColor
 import com.blueplayer.core.domain.model.Playlist
+import com.blueplayer.ui.components.StorageAccessBanner
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -97,6 +102,22 @@ fun BluePlayerRoot(
             val playbackOptions by container.playerController.options.collectAsStateWithLifecycle()
             val playlists by container.playlistsRepository.playlists.collectAsStateWithLifecycle()
             val favorites by container.favoritesRepository.favorites.collectAsStateWithLifecycle()
+
+            // Global storage-access banner state
+            val showStorageBanner by container.trackDeleter.showBanner.collectAsStateWithLifecycle()
+
+            // Refresh banner visibility every time the app returns to foreground.
+            // LifecycleEventObserver SAM has TWO parameters: (source, event).
+            val lifecycleOwner = LocalLifecycleOwner.current
+            DisposableEffect(lifecycleOwner) {
+                val observer = LifecycleEventObserver { _, event ->
+                    if (event == Lifecycle.Event.ON_RESUME) {
+                        container.trackDeleter.refreshBanner()
+                    }
+                }
+                lifecycleOwner.lifecycle.addObserver(observer)
+                onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+            }
 
             var showCreatePlaylistDialog by remember { mutableStateOf(false) }
             var deleteTarget by remember { mutableStateOf<Playlist?>(null) }
@@ -164,7 +185,6 @@ fun BluePlayerRoot(
                     "settings" -> {
                         navController.navigate(Destinations.SETTINGS) { launchSingleTop = true }
                     }
-                    // Deep link used by the home-screen widget tap
                     "nowplaying" -> {
                         navController.navigate(Destinations.NOW_PLAYING) { launchSingleTop = true }
                     }
@@ -221,7 +241,11 @@ fun BluePlayerRoot(
                                 (context as? android.app.Activity)?.finishAffinity()
                             },
                             onCreatePlaylistClick = { showCreatePlaylistDialog = true },
-                            onDeletePlaylist = { deleteTarget = it }
+                            onDeletePlaylist = { deleteTarget = it },
+                            onChangelogClick = {
+                                scope.launch { drawerState.close() }
+                                navController.navigate(Destinations.CHANGELOG)
+                            },
                         )
                     }
                 ) {
@@ -231,7 +255,8 @@ fun BluePlayerRoot(
                                 currentRoute != Destinations.NOW_PLAYING &&
                                 currentRoute != Destinations.EQUALIZER &&
                                 currentRoute != Destinations.ABOUT &&
-                                currentRoute != Destinations.ORGANIZATION
+                                currentRoute != Destinations.ORGANIZATION &&
+                                currentRoute != Destinations.CHANGELOG
                             ) {
                                 TopAppBar(
                                     title = { Text(text = titleForRoute(currentRoute, lang)) },
@@ -255,6 +280,7 @@ fun BluePlayerRoot(
                                 currentRoute == Destinations.SETTINGS ||
                                         currentRoute == Destinations.ABOUT ||
                                         currentRoute == Destinations.ORGANIZATION ||
+                                        currentRoute == Destinations.CHANGELOG ||
                                         currentRoute == Destinations.NOW_PLAYING
 
                             AnimatedVisibility(
@@ -285,26 +311,38 @@ fun BluePlayerRoot(
                             }
                         }
                     ) { paddingValues ->
-                        BluePlayerNavHost(
-                            navController = navController,
-                            container = container,
-                            lang = lang,
-                            onGithubClick = {
-                                uriHandler.openUri("https://github.com/aynazar-sylyyew-dev/")
-                            },
-                            onEqualizerClick = { navController.navigate(Destinations.EQUALIZER) },
-                            onOpenDrawer = { scope.launch { drawerState.open() } },
-                            modifier = Modifier.padding(paddingValues),
-                            homeTab = homeTab,
-                            onHomeTabSelected = { homeTab = it },
-                            // New: pass actions into NowPlaying screen
-                            onToggleFavoriteNow = {
-                                playerState.currentTrack?.let { t ->
-                                    scope.launch { container.favoritesRepository.toggleFavorite(t) }
-                                }
-                            },
-                            onAddToPlaylistNow = { showAddToPlaylistSheet = true }
-                        )
+                        Column(
+                            Modifier
+                                .padding(paddingValues)
+                                .fillMaxSize()
+                        ) {
+                            StorageAccessBanner(
+                                visible = showStorageBanner,
+                                lang = lang,
+                                onGrant = { container.trackDeleter.openAllFilesSettings() },
+                                onDismiss = { container.trackDeleter.dismissBanner() }
+                            )
+
+                            BluePlayerNavHost(
+                                navController = navController,
+                                container = container,
+                                lang = lang,
+                                onGithubClick = {
+                                    uriHandler.openUri("https://github.com/aynazar-sylyyew-dev/")
+                                },
+                                onEqualizerClick = { navController.navigate(Destinations.EQUALIZER) },
+                                onOpenDrawer = { scope.launch { drawerState.open() } },
+                                modifier = Modifier.weight(1f),
+                                homeTab = homeTab,
+                                onHomeTabSelected = { homeTab = it },
+                                onToggleFavoriteNow = {
+                                    playerState.currentTrack?.let { t ->
+                                        scope.launch { container.favoritesRepository.toggleFavorite(t) }
+                                    }
+                                },
+                                onAddToPlaylistNow = { showAddToPlaylistSheet = true }
+                            )
+                        }
                     }
                 }
             }
