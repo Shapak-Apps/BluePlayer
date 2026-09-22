@@ -1,11 +1,16 @@
 package com.blueplayer.app.ui
 
+import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextStyle
+import androidx.core.view.WindowCompat
 import com.blueplayer.core.domain.model.TextSize
 import com.blueplayer.core.domain.model.ThemeMode
 import com.blueplayer.ui.theme.BluePlayerTheme
@@ -41,6 +46,21 @@ fun AppTheme(
             )
         } else {
             base
+        }
+
+        // Sync the Android system status bar & navigation bar with the
+        // APP theme (not the system theme):
+        // - bar background = current theme background (black on AMOLED)
+        // - bar icons: light on dark themes, dark on light themes
+        val view = LocalView.current
+        SideEffect {
+            val window = (view.context as? Activity)?.window ?: return@SideEffect
+            window.statusBarColor = scheme.background.toArgb()
+            window.navigationBarColor = scheme.background.toArgb()
+            WindowCompat.getInsetsController(window, view).apply {
+                isAppearanceLightStatusBars = !darkTheme
+                isAppearanceLightNavigationBars = !darkTheme
+            }
         }
 
         MaterialTheme(
