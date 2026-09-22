@@ -28,8 +28,10 @@ kotlin {
 
 dependencies {
     implementation(project(":core:domain"))
-    implementation(project(":ui:theme"))
     implementation(project(":core:player"))
+    implementation(project(":ui:components"))
+    implementation(project(":ui:theme"))
+
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
     implementation(libs.compose.material3)
@@ -37,8 +39,9 @@ dependencies {
     implementation(libs.compose.material.icons.extended)
 
     implementation(libs.androidx.lifecycle.runtime.compose)
-    implementation("androidx.activity:activity-compose:1.9.2")
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.navigation.compose)
 
     debugImplementation(libs.compose.ui.tooling)
 }

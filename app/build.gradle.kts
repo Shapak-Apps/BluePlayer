@@ -27,7 +27,10 @@ android {
 
         ndk {
             abiFilters += listOf("armeabi-v7a", "arm64-v8a")
+            debugSymbolLevel = "FULL"
         }
+
+        resourceConfigurations += listOf("en", "ru", "tk")
 
         externalNativeBuild {
             cmake {
@@ -54,6 +57,9 @@ android {
     }
 
     buildTypes {
+        debug {
+            isDebuggable = true
+        }
         release {
             signingConfig = if (keystorePropertiesFile.exists()) {
                 signingConfigs.getByName("release")
@@ -63,10 +69,16 @@ android {
 
             isMinifyEnabled = true
             isShrinkResources = true
+            isDebuggable = false
+
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+
+            ndk {
+                debugSymbolLevel = "FULL"
+            }
         }
     }
 
@@ -82,6 +94,12 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "/META-INF/*.kotlin_module"
+            excludes += "/META-INF/*.version"
+            excludes += "/kotlin-tooling-metadata.json"
+        }
+        jniLibs {
+            useLegacyPackaging = false
         }
     }
 }

@@ -36,6 +36,8 @@ dependencies {
     implementation(libs.compose.material.icons.extended)
 
     implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation("androidx.documentfile:documentfile:1.0.1")
+    implementation("androidx.activity:activity-compose:1.9.2")
     implementation(libs.coil.compose)
     implementation("com.github.bumptech.glide:glide:4.16.0")
     debugImplementation(libs.compose.ui.tooling)
