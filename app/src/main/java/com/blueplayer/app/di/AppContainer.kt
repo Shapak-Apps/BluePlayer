@@ -35,6 +35,7 @@ import com.blueplayer.core.player.Media3PlayerController
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import com.blueplayer.ui.components.storage.TrackDeleter
 
 class AppContainer(appContext: Context) {
 
@@ -79,6 +80,8 @@ class AppContainer(appContext: Context) {
     val equalizerEngine: EqualizerEngine = EqualizerEngine()
 
     val bookmarksRepository: BookmarksRepository = BookmarksRepositoryImpl(appContext)
+
+    val trackDeleter: TrackDeleter = TrackDeleter(appContext)
 
     init {
         CrossfadeMonitor.start(

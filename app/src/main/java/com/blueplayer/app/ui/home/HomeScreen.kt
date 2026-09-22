@@ -92,8 +92,9 @@ fun HomeScreen(
                 0 -> ArtistsScreen(artistsVmFactory, lang, onArtistClick = onArtistClick)
                 1 -> AlbumsScreen(albumsVmFactory, lang, onAlbumClick = onAlbumClick)
                 2 -> LibraryScreen(
-                    libraryVmFactory,
+                    viewModelFactory = libraryVmFactory,
                     favoritesRepository = container.favoritesRepository,
+                    trackDeleter = container.trackDeleter,
                     lang = lang
                 )
                 3 -> GenresScreen(genresVmFactory, lang)

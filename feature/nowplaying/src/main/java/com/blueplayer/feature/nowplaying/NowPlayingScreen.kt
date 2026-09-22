@@ -1,19 +1,9 @@
 package com.blueplayer.feature.nowplaying
 
-import android.app.Activity
-import android.app.RecoverableSecurityException
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
-import android.os.Build
-import android.os.Environment
-import android.provider.MediaStore
-import android.provider.Settings
 import android.view.HapticFeedbackConstants
 import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.IntentSenderRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -83,8 +73,6 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
-import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.blueplayer.core.domain.locale.AppLanguage
 import com.blueplayer.core.domain.locale.Strings
@@ -103,10 +91,9 @@ import com.blueplayer.core.player.OnlineCoverFetcher
 import com.blueplayer.core.player.WaveformExtractor
 import com.blueplayer.ui.components.ArtworkPlaceholder
 import com.blueplayer.ui.components.GlideArtwork
-import kotlinx.coroutines.Dispatchers
+import com.blueplayer.ui.components.rememberTrackDeleterLaunchers
+import com.blueplayer.ui.components.storage.TrackDeleter
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.io.File
 
 private val SPEEDS = listOf(0.75f, 1f, 1.25f, 1.5f, 2f)
 
@@ -121,6 +108,7 @@ fun NowPlayingScreen(
     favoritesRepository: FavoritesRepository,
     playlistsRepository: PlaylistsRepository,
     bookmarksRepository: BookmarksRepository,
+    trackDeleter: TrackDeleter,
     lang: AppLanguage,
     isFavorite: Boolean,
     onOpenDrawer: () -> Unit,
@@ -138,7 +126,6 @@ fun NowPlayingScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val view = LocalView.current
-    val contentResolver = context.contentResolver
 
     LaunchedEffect(settings.keepScreenOn, state.isPlaying) {
         view.keepScreenOn = settings.keepScreenOn && state.isPlaying
@@ -147,6 +134,42 @@ fun NowPlayingScreen(
     val favorites by favoritesRepository.favorites.collectAsStateWithLifecycle()
     val playlists by playlistsRepository.playlists.collectAsStateWithLifecycle()
     val bookmarks by bookmarksRepository.bookmarks.collectAsStateWithLifecycle()
+
+    fun cleanupAfterDelete(t: Track) {
+        scope.launch {
+            if (favorites.any { it.id == t.id }) {
+                favoritesRepository.toggleFavorite(t)
+            }
+            bookmarks.filter { it.track.id == t.id }.forEach { bm ->
+                bookmarksRepository.remove(bm.id)
+            }
+            playlists.forEach { p ->
+                playlistsRepository.removeFromPlaylist(p.id, t.id)
+            }
+            playerController.next()
+            onNavigateBack()
+        }
+    }
+
+    // Shared deletion engine: register launchers + result callbacks
+    rememberTrackDeleterLaunchers(trackDeleter)
+
+    LaunchedEffect(trackDeleter) {
+        trackDeleter.bind(object : TrackDeleter.Callbacks {
+            override fun onDeleted(deletedTrack: Track) {
+                Toast.makeText(context, Strings.trackDeleted(lang), Toast.LENGTH_SHORT).show()
+                cleanupAfterDelete(deletedTrack)
+            }
+
+            override fun onFailed(failedTrack: Track) {
+                Toast.makeText(context, Strings.deleteFailed(lang), Toast.LENGTH_SHORT).show()
+            }
+
+            override fun onDenied(deniedTrack: Track) {
+                Toast.makeText(context, Strings.deleteNotAllowed(lang), Toast.LENGTH_LONG).show()
+            }
+        })
+    }
 
     val coverFetcher = remember { OnlineCoverFetcher(context, coverCache) }
 
@@ -187,314 +210,6 @@ fun NowPlayingScreen(
     var showDeleteDialog by remember { mutableStateOf(false) }
     var menuExpanded by remember { mutableStateOf(false) }
 
-    var pendingDeleteUri by remember { mutableStateOf<Uri?>(null) }
-    var pendingDeleteTrack by remember { mutableStateOf<Track?>(null) }
-
-    suspend fun performDelete(uri: Uri): Boolean = withContext(Dispatchers.IO) {
-        val crDeleted = runCatching { contentResolver.delete(uri, null, null) > 0 }
-            .getOrDefault(false)
-        if (crDeleted) return@withContext true
-
-        val docDeleted = runCatching { DocumentFile.fromSingleUri(context, uri)?.delete() == true }
-            .getOrDefault(false)
-        if (docDeleted) return@withContext true
-
-        val path = if (uri.scheme == "file") uri.path else getRealPathFromUri(context, uri)
-        if (path != null) {
-            val file = File(path)
-            if (file.exists() && file.delete()) return@withContext true
-        }
-        false
-    }
-
-    fun cleanupAfterDelete(t: Track) {
-        scope.launch {
-            if (favorites.any { it.id == t.id }) {
-                favoritesRepository.toggleFavorite(t)
-            }
-            bookmarks.filter { it.track.id == t.id }.forEach { bm ->
-                bookmarksRepository.remove(bm.id)
-            }
-            playlists.forEach { p ->
-                playlistsRepository.removeFromPlaylist(p.id, t.id)
-            }
-            playerController.next()
-            onNavigateBack()
-        }
-    }
-
-    fun onDeletedOk(t: Track) {
-        Toast.makeText(context, Strings.trackDeleted(lang), Toast.LENGTH_SHORT).show()
-        cleanupAfterDelete(t)
-    }
-
-    fun onDeletedFail() {
-        Toast.makeText(context, Strings.deleteFailed(lang), Toast.LENGTH_SHORT).show()
-    }
-
-    fun onDeletedDenied() {
-        Toast.makeText(context, Strings.deleteNotAllowed(lang), Toast.LENGTH_LONG).show()
-    }
-
-    val intentSenderLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartIntentSenderForResult()
-    ) { result ->
-        val uri = pendingDeleteUri
-        val t = pendingDeleteTrack
-        pendingDeleteUri = null
-        pendingDeleteTrack = null
-        if (uri == null || t == null) return@rememberLauncherForActivityResult
-
-        if (result.resultCode == Activity.RESULT_OK) {
-            scope.launch {
-                val deleted = withContext(Dispatchers.IO) {
-                    var stillExists = runCatching {
-                        contentResolver.query(
-                            uri,
-                            arrayOf(MediaStore.MediaColumns._ID),
-                            null, null, null
-                        )?.use { it.moveToFirst() } ?: false
-                    }.getOrDefault(false)
-
-                    if (stillExists) {
-                        stillExists = !performDelete(uri)
-                    }
-                    if (stillExists) {
-                        val path = if (uri.scheme == "file") uri.path
-                        else getRealPathFromUri(context, uri)
-                        stillExists = path != null && File(path).exists()
-                    }
-                    !stillExists
-                }
-                if (deleted) onDeletedOk(t) else onDeletedFail()
-            }
-        } else {
-            onDeletedDenied()
-        }
-    }
-
-    val writePermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        val uri = pendingDeleteUri
-        val t = pendingDeleteTrack
-        pendingDeleteUri = null
-        pendingDeleteTrack = null
-        if (uri == null || t == null) return@rememberLauncherForActivityResult
-
-        if (!granted) {
-            onDeletedDenied()
-            return@rememberLauncherForActivityResult
-        }
-        scope.launch {
-            val deleted = performDelete(uri)
-            if (deleted) onDeletedOk(t) else onDeletedFail()
-        }
-    }
-
-    val allFilesAccessLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) {
-        val uri = pendingDeleteUri
-        val t = pendingDeleteTrack
-        pendingDeleteUri = null
-        pendingDeleteTrack = null
-        if (uri == null || t == null) return@rememberLauncherForActivityResult
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager()) {
-            scope.launch {
-                val deleted = performDelete(uri)
-                if (deleted) onDeletedOk(t) else onDeletedFail()
-            }
-        } else {
-            onDeletedDenied()
-        }
-    }
-
-    fun requestAllFilesAccess(uri: Uri, t: Track) {
-        pendingDeleteUri = uri
-        pendingDeleteTrack = t
-        runCatching {
-            allFilesAccessLauncher.launch(
-                Intent(
-                    Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
-                    Uri.parse("package:${context.packageName}")
-                )
-            )
-        }.onFailure {
-            pendingDeleteUri = null
-            pendingDeleteTrack = null
-            onDeletedFail()
-        }
-    }
-
-    fun fallbackDelete(uri: Uri, t: Track) {
-        scope.launch {
-            val deleted = performDelete(uri)
-            if (deleted) {
-                onDeletedOk(t)
-            } else {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
-                    !Environment.isExternalStorageManager()
-                ) {
-                    requestAllFilesAccess(uri, t)
-                } else {
-                    onDeletedFail()
-                }
-            }
-        }
-    }
-
-    fun launchMediaStoreDeleteRequest(uri: Uri, t: Track) {
-        pendingDeleteUri = uri
-        pendingDeleteTrack = t
-
-        val request = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            runCatching {
-                MediaStore.createDeleteRequest(contentResolver, listOf(uri))
-            }.getOrNull()
-        } else {
-            null
-        }
-
-        if (request == null) {
-            pendingDeleteUri = null
-            pendingDeleteTrack = null
-            fallbackDelete(uri, t)
-            return
-        }
-
-        runCatching {
-            intentSenderLauncher.launch(
-                IntentSenderRequest.Builder(request.intentSender).build()
-            )
-        }.onFailure {
-            pendingDeleteUri = null
-            pendingDeleteTrack = null
-            fallbackDelete(uri, t)
-        }
-    }
-
-    fun requestDelete(t: Track) {
-        val originalUri = runCatching { Uri.parse(t.uri) }.getOrNull()
-        if (originalUri == null) {
-            onDeletedFail()
-            return
-        }
-
-        if (originalUri.scheme == "file") {
-            scope.launch {
-                val deleted = performDelete(originalUri)
-                if (deleted) {
-                    onDeletedOk(t)
-                } else {
-                    when {
-                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> {
-                            if (Environment.isExternalStorageManager()) onDeletedFail()
-                            else requestAllFilesAccess(originalUri, t)
-                        }
-                        Build.VERSION.SDK_INT > Build.VERSION_CODES.P -> onDeletedDenied()
-                        else -> {
-                            pendingDeleteUri = originalUri
-                            pendingDeleteTrack = t
-                            writePermissionLauncher.launch(
-                                android.Manifest.permission.WRITE_EXTERNAL_STORAGE
-                            )
-                        }
-                    }
-                }
-            }
-            return
-        }
-
-        val mediaUri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
-            originalUri.scheme == "content" &&
-            originalUri.authority != MediaStore.AUTHORITY
-        ) {
-            runCatching { MediaStore.getMediaUri(context, originalUri) }.getOrNull()
-                ?: originalUri
-        } else {
-            originalUri
-        }
-
-        when {
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> {
-                if (Environment.isExternalStorageManager()) {
-                    scope.launch {
-                        val deleted = performDelete(mediaUri)
-                        if (deleted) onDeletedOk(t)
-                        else launchMediaStoreDeleteRequest(mediaUri, t)
-                    }
-                } else {
-                    launchMediaStoreDeleteRequest(mediaUri, t)
-                }
-            }
-
-            Build.VERSION.SDK_INT == Build.VERSION_CODES.Q -> {
-                scope.launch {
-                    try {
-                        val deleted = withContext(Dispatchers.IO) {
-                            contentResolver.delete(mediaUri, null, null) > 0
-                        }
-                        if (deleted) {
-                            onDeletedOk(t)
-                        } else {
-                            val docDeleted = withContext(Dispatchers.IO) {
-                                runCatching {
-                                    DocumentFile.fromSingleUri(context, mediaUri)?.delete() == true
-                                }.getOrDefault(false)
-                            }
-                            if (docDeleted) onDeletedOk(t) else onDeletedFail()
-                        }
-                    } catch (e: RecoverableSecurityException) {
-                        pendingDeleteUri = mediaUri
-                        pendingDeleteTrack = t
-                        runCatching {
-                            intentSenderLauncher.launch(
-                                IntentSenderRequest.Builder(
-                                    e.userAction.actionIntent.intentSender
-                                ).build()
-                            )
-                        }.onFailure {
-                            pendingDeleteUri = null
-                            pendingDeleteTrack = null
-                            onDeletedFail()
-                        }
-                    } catch (e: SecurityException) {
-                        val docDeleted = withContext(Dispatchers.IO) {
-                            runCatching {
-                                DocumentFile.fromSingleUri(context, mediaUri)?.delete() == true
-                            }.getOrDefault(false)
-                        }
-                        if (docDeleted) onDeletedOk(t) else onDeletedDenied()
-                    } catch (e: Exception) {
-                        onDeletedFail()
-                    }
-                }
-            }
-
-            else -> {
-                val granted = ContextCompat.checkSelfPermission(
-                    context,
-                    android.Manifest.permission.WRITE_EXTERNAL_STORAGE
-                ) == PackageManager.PERMISSION_GRANTED
-
-                if (granted) {
-                    scope.launch {
-                        val deleted = performDelete(originalUri)
-                        if (deleted) onDeletedOk(t) else onDeletedFail()
-                    }
-                } else {
-                    pendingDeleteUri = originalUri
-                    pendingDeleteTrack = t
-                    writePermissionLauncher.launch(
-                        android.Manifest.permission.WRITE_EXTERNAL_STORAGE
-                    )
-                }
-            }
-        }
-    }
-
     if (track == null) {
         Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text(Strings.nothingPlaying(lang), style = MaterialTheme.typography.titleLarge)
@@ -515,7 +230,6 @@ fun NowPlayingScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surface)
     ) {
-        // Top bar: drawer + track name/artist (first line) + actions
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -574,7 +288,6 @@ fun NowPlayingScreen(
             }
         }
 
-        // Main content: enlarged artwork (MiniPlayerBar is hidden on this screen)
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -803,7 +516,6 @@ fun NowPlayingScreen(
             Spacer(Modifier.height(12.dp))
         }
 
-        // Transport controls (big play row) + secondary action row
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -863,9 +575,6 @@ fun NowPlayingScreen(
 
             Spacer(Modifier.height(4.dp))
 
-            // Secondary row: same actions as the MiniPlayerBar second row
-            // (hidden on this screen). Navigation is done by the caller
-            // via callbacks, so this module never imports app classes.
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -915,7 +624,7 @@ fun NowPlayingScreen(
                 TextButton(
                     onClick = {
                         showDeleteDialog = false
-                        requestDelete(track)
+                        trackDeleter.requestDelete(track)
                     }
                 ) {
                     Text(Strings.delete(lang), color = MaterialTheme.colorScheme.error)
@@ -1070,18 +779,6 @@ fun NowPlayingScreen(
                 TextButton(onClick = { showInfoDialog = false }) { Text("OK") }
             }
         )
-    }
-}
-
-private fun getRealPathFromUri(context: android.content.Context, uri: Uri): String? {
-    return try {
-        val projection = arrayOf(MediaStore.Audio.Media.DATA)
-        context.contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
-            val columnIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
-            if (cursor.moveToFirst()) cursor.getString(columnIndex) else null
-        }
-    } catch (e: Exception) {
-        null
     }
 }
 
