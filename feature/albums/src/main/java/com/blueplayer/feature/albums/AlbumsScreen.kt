@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
@@ -27,14 +28,17 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -44,6 +48,8 @@ import com.blueplayer.core.domain.locale.AppLanguage
 import com.blueplayer.core.domain.locale.Strings
 import com.blueplayer.core.domain.model.Album
 import com.blueplayer.ui.components.ArtworkPlaceholder
+import com.blueplayer.ui.components.ListPreloader
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 @Composable
 fun AlbumsScreen(
@@ -54,6 +60,37 @@ fun AlbumsScreen(
 ) {
     val viewModel: AlbumsViewModel = viewModel(factory = viewModelFactory)
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    val gridState = rememberLazyGridState()
+    val context = LocalContext.current
+    val density = LocalDensity.current
+    val itemSizePx = with(density) { 130.dp.roundToPx() }
+
+    // Prefetch album covers for cells approaching the viewport.
+    // Grid shows ~12 cells per screen on phones, so prefetch 16 ahead
+    // to cover fast flings and orientation changes.
+    LaunchedEffect(gridState, uiState) {
+        val albums = (uiState as? AlbumsUiState.Success)?.albums ?: return@LaunchedEffect
+        snapshotFlow { gridState.firstVisibleItemIndex }
+            .distinctUntilChanged()
+            .collect { firstVisible ->
+                val prefetchWindow = 16
+                val endExclusive = (firstVisible + prefetchWindow + 8)
+                    .coerceAtMost(albums.size)
+                for (i in firstVisible until endExclusive) {
+                    ListPreloader.preload(context, albums[i].artworkUri, itemSizePx)
+                }
+            }
+    }
+
+    // Initial prefetch of the first visible grid so the opening frame
+    // renders decoded bitmaps instead of placeholders.
+    LaunchedEffect(uiState) {
+        val albums = (uiState as? AlbumsUiState.Success)?.albums ?: return@LaunchedEffect
+        albums.take(24).forEach {
+            ListPreloader.preload(context, it.artworkUri, itemSizePx)
+        }
+    }
 
     Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         when (val state = uiState) {
@@ -67,6 +104,7 @@ fun AlbumsScreen(
                     LazyVerticalGrid(
                         columns = GridCells.Adaptive(minSize = 130.dp),
                         modifier = Modifier.fillMaxSize(),
+                        state = gridState,
                         contentPadding = PaddingValues(12.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -136,10 +174,10 @@ private fun AlbumCard(
                 Text(album.title,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                 Text(album.artist,
                     style = MaterialTheme.typography.bodySmall,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
