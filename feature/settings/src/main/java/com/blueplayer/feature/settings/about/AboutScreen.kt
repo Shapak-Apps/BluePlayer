@@ -55,6 +55,8 @@ import com.blueplayer.core.domain.locale.AppLanguage
 import com.blueplayer.core.domain.locale.Strings
 import com.blueplayer.feature.settings.R
 
+private const val BLUE_PLAYER_REPO = "https://github.com/Shapak-Apps/BluePlayer"
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AboutScreen(
@@ -283,10 +285,7 @@ fun AboutScreen(
                     onClick = {
                         val intent = Intent(Intent.ACTION_SEND).apply {
                             type = "text/plain"
-                            putExtra(
-                                Intent.EXTRA_TEXT,
-                                "https://github.com/Shapak-Apps/BluePlayer"
-                            )
+                            putExtra(Intent.EXTRA_TEXT, BLUE_PLAYER_REPO)
                         }
                         context.startActivity(Intent.createChooser(intent, null))
                     },

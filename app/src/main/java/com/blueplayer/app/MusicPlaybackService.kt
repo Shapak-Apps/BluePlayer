@@ -4,7 +4,11 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.net.wifi.WifiManager
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.os.PowerManager
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -13,7 +17,6 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultRenderersFactory
-import com.blueplayer.app.notification.BluePlayerNotificationProvider
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
@@ -23,6 +26,7 @@ import androidx.media3.session.MediaSessionService
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
 import com.blueplayer.app.audio.NativeBassProcessor
+import com.blueplayer.app.notification.BluePlayerNotificationProvider
 import com.blueplayer.app.widget.WidgetUpdater
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
@@ -30,8 +34,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class MusicPlaybackService : MediaSessionService() {
 
@@ -48,6 +52,10 @@ class MusicPlaybackService : MediaSessionService() {
         const val KEY_ARTWORK = "artwork"
 
         private const val REPEAT_COMMAND = "com.blueplayer.app.REPEAT"
+
+        // Progress update interval (ms). 1 second keeps the notification
+        // progress bar alive without burning battery.
+        private const val TICK_INTERVAL_MS = 1000L
     }
 
     private var mediaSession: MediaSession? = null
@@ -55,6 +63,31 @@ class MusicPlaybackService : MediaSessionService() {
 
     // Scope for widget repaint coroutines; cancelled in onDestroy
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
+    // WakeLock: keeps CPU running while music plays so the system does
+    // not kill the service and the notification stays live in the shade
+    private var wakeLock: PowerManager.WakeLock? = null
+    private var wifiLock: WifiManager.WifiLock? = null
+
+    // Main-thread handler used for the 1-second notification ticker
+    private val handler = Handler(Looper.getMainLooper())
+
+    // Runnable that forces the media notification to rebuild by poking the
+    // session extras. Called every second while music is playing.
+    // refers to the Runnable itself and can be re-posted to the Handler.
+    private val tickerRunnable: Runnable = object : Runnable {
+        override fun run() {
+            mediaSession?.let { session ->
+                session.setSessionExtras(Bundle().apply {
+                    putLong("tick", System.currentTimeMillis())
+                })
+            }
+            // Re-schedule if still playing; `this` == tickerRunnable here
+            if (player?.isPlaying == true) {
+                handler.postDelayed(this, TICK_INTERVAL_MS)
+            }
+        }
+    }
 
     private val container by lazy {
         (application as BluePlayerApplication).container
@@ -64,6 +97,21 @@ class MusicPlaybackService : MediaSessionService() {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             publishAudioSessionId()
             WidgetUpdater.updateFromService(this@MusicPlaybackService, container, player)
+
+            if (isPlaying) {
+                acquireLocks()
+                handler.removeCallbacks(tickerRunnable)
+                handler.postDelayed(tickerRunnable, TICK_INTERVAL_MS)
+            } else {
+                releaseLocks()
+                handler.removeCallbacks(tickerRunnable)
+                // One final tick so the pause state is reflected immediately
+                mediaSession?.let { session ->
+                    session.setSessionExtras(Bundle().apply {
+                        putLong("tick", System.currentTimeMillis())
+                    })
+                }
+            }
         }
 
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
@@ -85,6 +133,10 @@ class MusicPlaybackService : MediaSessionService() {
             reason: Int
         ) {
             WidgetUpdater.updateFromService(this@MusicPlaybackService, container, player)
+            // Force a notification rebuild so the seek is reflected in the shade
+            mediaSession?.setSessionExtras(Bundle().apply {
+                putLong("tick", System.currentTimeMillis())
+            })
         }
 
         override fun onRepeatModeChanged(repeatMode: Int) {
@@ -192,7 +244,8 @@ class MusicPlaybackService : MediaSessionService() {
             }
         }
 
-        // Slow ticker: keeps the widget progress bar alive while playing
+        // Slow ticker: keeps the HOME SCREEN widget progress bar alive
+        // while playing (separate from the notification ticker above)
         serviceScope.launch {
             while (true) {
                 delay(10_000)
@@ -301,6 +354,43 @@ class MusicPlaybackService : MediaSessionService() {
         }
     }
 
+    // Acquire locks so the CPU keeps running and wifi stays on during
+    // playback. Without these, OEM power savers (MIUI, One UI, RealmeUI)
+    // may throttle the service and the notification progress bar freezes.
+    private fun acquireLocks() {
+        if (wakeLock == null) {
+            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+            wakeLock = pm.newWakeLock(
+                PowerManager.PARTIAL_WAKE_LOCK,
+                "BluePlayer:Playback"
+            ).apply {
+                setReferenceCounted(false)
+                acquire(4 * 60 * 60 * 1000L) // 4 hours max, released on pause
+            }
+        } else if (wakeLock?.isHeld == false) {
+            wakeLock?.acquire(4 * 60 * 60 * 1000L)
+        }
+
+        if (wifiLock == null) {
+            val wm = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+            @Suppress("DEPRECATION")
+            wifiLock = wm.createWifiLock(
+                WifiManager.WIFI_MODE_FULL_HIGH_PERF,
+                "BluePlayer:Wifi"
+            ).apply {
+                setReferenceCounted(false)
+                acquire()
+            }
+        } else if (wifiLock?.isHeld == false) {
+            wifiLock?.acquire()
+        }
+    }
+
+    private fun releaseLocks() {
+        runCatching { if (wakeLock?.isHeld == true) wakeLock?.release() }
+        runCatching { if (wifiLock?.isHeld == true) wifiLock?.release() }
+    }
+
     override fun onTaskRemoved(rootIntent: Intent?) {
         val p = player ?: return
         saveCurrentSession()
@@ -313,6 +403,10 @@ class MusicPlaybackService : MediaSessionService() {
         saveCurrentSession()
         serviceScope.cancel()
         WidgetUpdater.showEmpty(this)
+
+        handler.removeCallbacks(tickerRunnable)
+        releaseLocks()
+
         player?.let { p ->
             p.removeListener(sessionListener)
             p.release()

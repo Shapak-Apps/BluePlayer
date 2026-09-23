@@ -328,7 +328,7 @@ fun BluePlayerRoot(
                                 container = container,
                                 lang = lang,
                                 onGithubClick = {
-                                    uriHandler.openUri("https://github.com/aynazar-sylyyew-dev/")
+                                    uriHandler.openUri("https://github.com/Shapak-Apps/BluePlayer")
                                 },
                                 onEqualizerClick = { navController.navigate(Destinations.EQUALIZER) },
                                 onOpenDrawer = { scope.launch { drawerState.open() } },
