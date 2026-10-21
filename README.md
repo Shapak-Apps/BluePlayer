@@ -53,7 +53,11 @@
 
 ### 🖼 Artwork
 - Embedded cover art from local files
-- Automatic online cover lookup (iTunes Search API) with disk caching when a file has no embedded art
+- Automatic online cover lookup via three HTTPS services
+  (**iTunes Search API**, **Deezer API**, **MusicBrainz / Cover Art Archive**)
+  for every opened track, with on-disk caching. The lookup uses only the
+  track's title and artist — no personal data is sent. Can be completely
+  disabled in **Settings → Online covers**.
 
 ### 🎨 Interface
 - Material 3 design with light / dark / system theme modes
@@ -107,7 +111,7 @@ Feature modules never depend on each other — shared code lives in `core` and `
 | Async | Kotlin Coroutines / Flow, Lifecycle 2.8.6 |
 | Images | Coil 2.7.0, Glide 4.16.0 |
 | Build | AGP 8.5.2, Gradle Kotlin DSL, JDK 17 |
-| Platforms | minSdk 24, targetSdk / compileSdk 34 |
+| Platforms | minSdk 24, targetSdk 36, compileSdk 37 |
 
 ---
 
@@ -116,7 +120,7 @@ Feature modules never depend on each other — shared code lives in `core` and `
 ### Requirements
 - Android Studio (Ladybug or newer)
 - JDK 17
-- Android SDK Platform 34
+- Android SDK Platform 37
 - NDK (Side by side) and CMake — install via **SDK Manager → SDK Tools**
 - A device or emulator with API 24+
 

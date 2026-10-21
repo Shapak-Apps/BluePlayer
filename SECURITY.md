@@ -97,11 +97,17 @@ Blue Player is designed with privacy and safety in mind:
 * **No backend server.** All user data — library, playlists, favorites,
   settings, playback position — is stored locally on the device.
 * **Minimal network usage.** The only network calls are HTTPS cover-art
-  metadata lookups. No personal data, library contents, or listening history
-  ever leave the device.
+  lookups: the **title and artist** of the track you open are sent to
+  **iTunes Search API**, **Deezer API** and **MusicBrainz / Cover Art Archive**
+  to find a matching cover image. No personal data, full library contents, or
+  listening history ever leave the device. Online cover lookup can be
+  completely disabled in **Settings → Online covers**.
 * **No analytics, no tracking, no advertising SDKs.**
-* **Scoped Storage compliance.** File access goes through MediaStore; track
-  deletion uses the system consent dialogs required on Android 11+.
+* **Scoped Storage compliance.** File access goes through `MediaStore`. On
+  Android 11+ (API 30) track deletion uses the official system consent dialog
+  via `MediaStore.createDeleteRequest`; on Android 10 (API 29) it uses legacy
+  `File.delete()` with `requestLegacyExternalStorage`. The app does **not**
+  request the `MANAGE_EXTERNAL_STORAGE` ("All files access") permission.
 * **Hardened release builds.** Release artifacts are minified and
   resource-shrunk with R8/ProGuard and distributed only as signed builds via
   GitHub Releases.
