@@ -1,3 +1,8 @@
+# BluePlayer
+
+> **⚠️ NOTICE: This repository is now ARCHIVED.**
+> The open-source development of this version has been discontinued. Active development of the app continues in a **private, closed-source repository**. The application is fully supported and updated in app stores under our current Privacy Policy. This repository remains public solely as a historical baseline and portfolio.
+
 <p align="center">
   <img src="app/src/main/ic_launcher-playstore.png" alt="BluePlayer icon" width="128" height="128">
 </p>

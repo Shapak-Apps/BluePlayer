@@ -1,3 +1,10 @@
+## Reporting a Vulnerability
+
+As this repository is now archived and active development has moved to a closed-source model, please **DO NOT** open public issues for security flaws.
+
+If you find a security vulnerability in the current active version of the app, please report it directly via email to: **shapak.apps@gmail.com**
+
+
 # Security Policy
 
 The Blue Player team and the Shapak-Apps organization take the security of our

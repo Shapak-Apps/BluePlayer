@@ -1,5 +1,12 @@
 # Contributing to BluePlayer
 
+**⚠️ NOTICE: Contributions are no longer accepted here.**
+
+This repository has been archived. Active development of BluePlayer has transitioned to a closed-source model. We are incredibly grateful to everyone who supported the open-source phase of this project! You are still welcome to fork this historical codebase for your personal use under the Apache-2.0 license terms.
+
+
+# Contributing to BluePlayer
+
 Thanks for your interest in making BluePlayer better! This document explains how to report issues, propose features and submit code.
 
 ## Code of Conduct
